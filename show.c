@@ -3,9 +3,9 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/sysmacros.h>
+
 #include "defs.h"
 #include "show.h"
-
 #include "config.h"
 
 extern struct lsflags flags;
@@ -54,8 +54,7 @@ static int   filter(const struct dirent *);
 static int   greater(int, int);
 static int   ilen(int );
 static void  print_time(time_t);
-static char  get_extra_char(char *);
-static char *get_id(long long id, void *(*func)());
+static void  print_id(long long id, char ** (*)());
 static void  print_type(mode_t);
 static void  print_perms(mode_t);
 
@@ -112,104 +111,6 @@ static int greater(int a, int b) {
 
 static void print(const char *s) {
 	fputs(s, stdout);
-};
-
-
-int
-print_name(mode_t mode, const char *name)
-{
-	int i;
-	const char *p;
-	if (name == NULL) return 0;
-	switch (mode & S_IFMT) {
-	case S_IFCHR:  fputs(CHR,  stdout); break;
-	case S_IFBLK:  fputs(BLK,  stdout); break;
-	case S_IFIFO:  fputs(FIFO, stdout); break;
-	case S_IFSOCK: fputs(SOCK, stdout); break;
-	case S_IFDIR:
-		printf(DIR_ "%s" NORMAL " >", name);
-		return strlen(name) + 2;
-	case S_IFLNK:
-		i = printf(LINK "%s" NORMAL " ->%.*s",
-		        name, (int) (4 - strlen(name)%4), "    ");
-		print_link(name);
-		return (i - strlen(LINK NORMAL));
-	case S_IFREG: /* fallthrow */
-		if (mode & (S_IXUSR|S_IXGRP|S_IXOTH)) {
-			printf(EXEC "%s" NORMAL " *", name);
-			return strlen(name) + 2;
-		};
-	default:
-		if ((p = strrchr(name, '.')) != NULL) {
-			for (++p, i = 0; i < ext_sz; i++) {
-				if (!match(ext[i].r, p)) continue;
-				printf("%s%s" NORMAL, ext[i].c, name);
-				return strlen(name);
-			};
-		};
-		for (i = 0; i < fname_sz; i++) {
-			if (!match(fname[i].r, name)) continue;
-			printf("%s%s" NORMAL, fname[i].c, name);
-			return strlen(name);
-		};
-	};
-	i = printf("%s", name);
-	fputs(NORMAL, stdout);
-	return i;
-}
-
-
-static void
-print_link(const char *lname)
-{
-	if (!ignore_links) {
-		char name[0x400];
-		long sz;
-		sz = readlink(lname, name, sizeof(name));
-		if (sz <= 0) {
-			ignore_links = 1;
-			return ;
-		};
-		name[sz] = '\0';
-		print_path(name, LINK);
-	};
-
-}
-
-
-void
-print_path(const char *str, const char *color)
-{
-	fputs(color, stdout);
-	for (;*str;str++) {
-		if (*str != '/') putchar(*str);
-		else printf(NORMAL "/%s", color);
-	};
-	fputs(NORMAL, stdout);
-	return ;
-}
-
-
-static int
-match(const char *r, const char *s)
-{
-	int m;
-	for (;*r; r++, s++) switch (*r) {
-		case '*':
-			for (++r;*s;)
-				if (match(r, s++)) return 1;
-			return !*r;
-		case '?':
-			break;
-		case '[':
-			for (m = 0; *r && *r != ']';)
-				m += (*s == *++r);
-			if (!m) return 0;
-			break;
-		default:
-			if (*s != *r) return 0;
-	};
-	return !*s;
 };
 
 
@@ -343,12 +244,12 @@ print_line(struct file *f, struct padding *pad)
 	print_type(f->mode);
 	print_perms(f->mode);
 	printf("%*u ", (int) pad->blocks, (unsigned) f->blocks);
-	if (flags.show_owner) printf("%-*i ", 3, (int) f->user);
-	if (flags.show_group) printf("%-*i ", 3, (int) f->group);
 	if (S_ISCHR(f->mode) || S_ISBLK(f->mode))
 		printf(" %*u, %*u ", 3, major(f->size), 3, minor(f->size));
 	else
 		printf("%*u ", (int) pad->size, (unsigned) f->size);
+	if (flags.show_owner) print_id(f->user,  (char **(*)()) &getpwuid);
+	if (flags.show_group) print_id(f->group, (char **(*)()) &getgrgid);
 	if (flags.show_time) print_time(f->tim);
 	if (flags.colour) print_name(f->mode, f->name);
 	else print(f->name);
@@ -369,33 +270,32 @@ static void
 print_time(time_t sec)
 {
 #define HALF_YEAR (183 * 86400)
-	/* time is called only once */
+	/* time() is called only once */
 	static time_t now = 0;
 	struct tm *t;
-	char str[16];
+	char str[20];
+	// ---
 	if (!now) now = time(0);
 	t = localtime(&sec);
 	if ((now - sec) > HALF_YEAR)
-		strftime(str, 16, "%b %d  %Y ", t);
+		strftime(str, 20, " %b %d  %Y ", t);
 	else
-		strftime(str, 16, "%b %d %H:%M ", t);
+		strftime(str, 20, " %b %d %H:%M ", t);
 	print(str);
 }
 
 
-char *
-get_id(long long id, void *(*func)())
+static void
+print_id(long long id, char ** (*tostr)())
 {
-	char *str;
-	if (!flags.num_ids && (str = func(id)) != NULL) {
-		str = strdup(str);
-		if (str == NULL) exit(1);
-		return str;
+	char **str;
+	if (!flags.num_ids) {
+		str = (char **) tostr(id);
+		if (str == NULL) return ;
+		printf("%s ", *str);
+	} else {
+		printf("%*u ", 3, (unsigned) id);
 	};
-	str = malloc((sizeof(long long) * 3) + 2);
-	if (str == NULL) exit(1);
-	sprintf(str, "%lli", id);
-	return str;
 }
 
 
@@ -464,7 +364,7 @@ print_perms(mode_t m)
 
 
 
-static inline size_t
+static size_t
 get_tw()
 {
 	struct winsize	w;
@@ -489,6 +389,7 @@ short_ls(char **str, size_t off, size_t sz, char *path)
 		if (((max +5) * 2) > cols) goto single_column;
 		else  cols = cols / (max +5);
 		max += flags.colour ? 3 : 0;
+		ignore_links = 1;
 		for (c = 0; sz--; str++) {
 			if (flags.colour) {
 				if (lstat(cat_dir(path, *str+off), &s) < 0)
@@ -518,3 +419,101 @@ single_column:
 		};
 	};
 }
+
+
+int
+print_name(mode_t mode, const char *name)
+{
+	int i;
+	const char *p;
+	if (name == NULL) return 0;
+	switch (mode & S_IFMT) {
+	case S_IFCHR:  fputs(CHR,  stdout); break;
+	case S_IFBLK:  fputs(BLK,  stdout); break;
+	case S_IFIFO:  fputs(FIFO, stdout); break;
+	case S_IFSOCK: fputs(SOCK, stdout); break;
+	case S_IFDIR:
+		printf(DIR_ "%s" NORMAL " >", name);
+		return strlen(name) + 2;
+	case S_IFLNK:
+		i = printf(LINK "%s" NORMAL " ->%.*s",
+		        name, (int) (4 - strlen(name)%4), "    ");
+		print_link(name);
+		return (i - strlen(LINK NORMAL));
+	case S_IFREG: /* fallthrow */
+		if (mode & (S_IXUSR|S_IXGRP|S_IXOTH)) {
+			printf(EXEC "%s" NORMAL " *", name);
+			return strlen(name) + 2;
+		};
+	default:
+		if ((p = strrchr(name, '.')) != NULL) {
+			for (++p, i = 0; i < ext_sz; i++) {
+				if (!match(ext[i].r, p)) continue;
+				printf("%s%s" NORMAL, ext[i].c, name);
+				return strlen(name);
+			};
+		};
+		for (i = 0; i < fname_sz; i++) {
+			if (!match(fname[i].r, name)) continue;
+			printf("%s%s" NORMAL, fname[i].c, name);
+			return strlen(name);
+		};
+	};
+	i = printf("%s", name);
+	fputs(NORMAL, stdout);
+	return i;
+}
+
+
+static void
+print_link(const char *lname)
+{
+	if (!ignore_links) {
+		char name[0x400];
+		long sz;
+		sz = readlink(lname, name, sizeof(name));
+		if (sz <= 0) {
+			ignore_links = 1;
+			return ;
+		};
+		name[sz] = '\0';
+		print_path(name, LINK);
+	};
+
+}
+
+
+void
+print_path(const char *str, const char *color)
+{
+	fputs(color, stdout);
+	for (;*str;str++) {
+		if (*str != '/') putchar(*str);
+		else printf(NORMAL "/%s", color);
+	};
+	fputs(NORMAL, stdout);
+	return ;
+}
+
+
+static int
+match(const char *r, const char *s)
+{
+	int m;
+	for (;*r; r++, s++) switch (*r) {
+		case '*':
+			for (++r;*s;)
+				if (match(r, s++)) return 1;
+			return !*r;
+		case '?':
+			break;
+		case '[':
+			for (m = 0; *r && *r != ']';)
+				m += (*s == *++r);
+			if (!m) return 0;
+			break;
+		default:
+			if (*s != *r) return 0;
+	};
+	return !*s;
+};
