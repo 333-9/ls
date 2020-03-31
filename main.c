@@ -38,7 +38,7 @@ parse_flags(char *astr)
 		case 'a': flags.all          = 1; break;
 		case 'f': flags.no_sort      = 1; break;
 		case 'g': flags.show_group   = 1; break;
-		case 'G': flags.colour       = 1; break;
+		case 'G': flags.color        = 1; break;
 		case 'l': flags.long_list    = 1; break;
 		case 'n': flags.num_ids      = 1; break;
 		case 'o': flags.show_owner   = 1; break;

@@ -17,8 +17,8 @@ struct lsflags {
     unsigned int   long_list     : 1;
     unsigned int   no_sort       : 1;
     unsigned int   reverse_sort  : 1;
-    unsigned int   colour        : 1;
-    unsigned int   num_ids       : 1; /* ignored for now */
+    unsigned int   color         : 1;
+    unsigned int   num_ids       : 1;
     unsigned int   show_owner    : 1;
     unsigned int   show_group    : 1;
     unsigned int   show_time     : 1;

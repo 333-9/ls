@@ -6,6 +6,8 @@
 
 #include "defs.h"
 #include "show.h"
+
+static void print(const char *s);
 #include "config.h"
 
 extern struct lsflags flags;
@@ -174,10 +176,10 @@ show_file(char *path)
 	f.mode = s.st_mode;
 	if (S_ISDIR(f.mode)) {
 		putchar('\n');
-		if (flags.colour) print_path(path, DIR_);
+		if (flags.color) print_path(path, DIR_);
 		else print(path);
 		puts(" :");
-		if (!show_dir(path) && flags.colour)
+		if (!show_dir(path) && flags.color)
 			puts("\e[38;5;237mnone\e[0m");
 		putchar('\n');
 	} else if (flags.long_list) {
@@ -192,7 +194,7 @@ show_file(char *path)
 			f.size  = s.st_size;
 		print_line(&f, &pad);
 	} else {
-		if (flags.colour) {
+		if (flags.color) {
 			print_name(f.mode, path);
 		} else {
 			print(path);
@@ -251,7 +253,7 @@ print_line(struct file *f, struct padding *pad)
 	if (flags.show_owner) print_id(f->user,  (char **(*)()) &getpwuid);
 	if (flags.show_group) print_id(f->group, (char **(*)()) &getgrgid);
 	if (flags.show_time) print_time(f->tim);
-	if (flags.colour) print_name(f->mode, f->name);
+	if (flags.color) print_name(f->mode, f->name);
 	else print(f->name);
 	putchar('\n');
 }
@@ -303,7 +305,7 @@ static void
 print_type(mode_t mode)
 {
 #ifdef TYPE_PRINT
-	if (flags.colour)
+	if (flags.color)
 	    switch (mode & S_IFMT) {
 		case S_IFDIR:  print(TYPE_DIR);  break;
 		case S_IFCHR:  print(TYPE_CHR);  break;
@@ -349,7 +351,7 @@ print_perms(mode_t m)
 	    //
 	    0,
 	};
-	if (!flags.colour) {
+	if (!flags.color) {
 		print(mode);
 	} else {
 		for (i = 0; mode[i]; i++) {
@@ -388,10 +390,10 @@ short_ls(char **str, size_t off, size_t sz, char *path)
 		};
 		if (((max +5) * 2) > cols) goto single_column;
 		else  cols = cols / (max +5);
-		max += flags.colour ? 3 : 0;
+		max += flags.color ? 3 : 0;
 		ignore_links = 1;
 		for (c = 0; sz--; str++) {
-			if (flags.colour) {
+			if (flags.color) {
 				if (lstat(cat_dir(path, *str+off), &s) < 0)
 					exit(3);
 				i = print_name(s.st_mode, *str+off);
@@ -408,7 +410,7 @@ short_ls(char **str, size_t off, size_t sz, char *path)
 	} else {
 single_column:
 		for (; sz--; str++) {
-			if (flags.colour) {
+			if (flags.color) {
 				if (lstat(cat_dir(path, *str+off), &s) < 0)
 					exit(3);
 				print_name(s.st_mode, *str+off);

@@ -19,4 +19,9 @@ bls - file listing based on BSD ls command
 
 
 ## default behavior
+
 the -C flag is set if output is a terminal.
+
+links in the curent directory are expandet into
+(name -> link) pair, this is turned off
+after the first error (link is not in current directory)

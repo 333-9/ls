@@ -1,5 +1,3 @@
-static void print(const char *);
-
 /*
  * if you uncomment TYPE_PRINT bls
  * will print char before file permissions in color
@@ -56,7 +54,7 @@ static void perm_color(char c, int col) {
 #define F_VIDEO      "\e[1;33m"
 #define F_RICH_TEXT  "\e[1;38;5;58m"
 
-/* file name colors */
+/* file name match colors */
 #define F_CONFIG     "\e[38;5;48m"
 #define F_SOFTWARE   "\e[38;5;48m"
 
@@ -76,7 +74,6 @@ struct color_match {
  *         - '^' doesn't have a special meaning
  *
  * ext   - matches an extension after the last '.'
- * fname - matches full name
  */
 const struct color_match ext[] =
 {
@@ -220,6 +217,11 @@ const struct color_match ext[] =
 };
 
 
+
+
+/* 
+ * fname - matches full name
+ */
 const struct color_match fname[] =
 {
 #ifdef F_CONFIG
