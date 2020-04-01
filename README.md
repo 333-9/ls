@@ -1,5 +1,4 @@
-bls - file listing based on BSD ls command
-
+tls - tiny-ls file listing
 
 ## options
 	- 1  force one file per line

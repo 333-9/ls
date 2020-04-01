@@ -1,7 +1,4 @@
-/*
- * if you uncomment TYPE_PRINT bls
- * will print char before file permissions in color
- */
+/* clored file type */
 #define TYPE_PRINT 1
 #define TYPE_DIR  DIR_ "d" NORMAL
 #define TYPE_CHR  CHR  "c" NORMAL

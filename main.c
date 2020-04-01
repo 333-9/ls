@@ -48,8 +48,8 @@ parse_flags(char *astr)
 		case '-':
 			/* long options, if any */
 		default:
-			printf("bls: illegal option:  %c\n", astr[-1]);
-			puts("usage: bls [-AGafglnor1] files");
+			printf("tls: illegal option:  %c\n", astr[-1]);
+			puts("usage: tls [-AGafglnor1] files");
 			exit(1);
 	};
 }

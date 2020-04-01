@@ -1,7 +1,7 @@
 # CC = clang
 # CC = tcc
 
-bls: main.c show.o *.h
+tls: main.c show.o *.h
 	$(CC) -o $@ main.c show.o
 
 show.o: *.h
@@ -14,5 +14,5 @@ clean:
 
 install: bls
 	mkdir -p  /usr/local/bin/
-	cp -f bls /usr/local/bin/
-	chmod 755 /usr/local/bin/bls
+	cp -f tls /usr/local/bin/
+	chmod 755 /usr/local/bin/tls
