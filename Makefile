@@ -1,19 +1,16 @@
 CC = clang
 # CC = tcc
 
-#tls: main.c show.o *.h
-#	$(CC) -o $@ main.c show.o
 
-#show.o: *.h
-
-tls: new.c config.h
-	$(CC) -o $@ $<
+tls: main.c config.h
+	$(CC) -o $@ main.c
 
 
 .PHONY: clean install
 
 clean:
 	rm -f *.o
+	rm -f tls
 
 install: tls
 	mkdir -p  /usr/local/bin/
