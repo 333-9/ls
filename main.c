@@ -49,14 +49,14 @@ parse_flags(char *astr)
 			/* long options, if any */
 		default:
 			printf("tls: illegal option:  %c\n", astr[-1]);
-			puts("usage: tls [-AGafglnor1] files");
+			puts("usage: tls [-1CAaGlgonfrV] files");
 			exit(1);
 	};
 }
 
 
 int
-main(unsigned argc, char *argv[])
+main(int argc, char *argv[])
 {
 	int i, noarg = 1;
 	flags.columns = isatty(1);

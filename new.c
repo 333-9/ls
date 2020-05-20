@@ -1,18 +1,79 @@
+/*
+ *
+ */
+
+#include <dirent.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
+
+#include <grp.h>
+#include <pwd.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <sys/sysmacros.h>
+#include <sys/types.h>
 
-#include "defs.h"
-#include "show.h"
 
-static void print(const char *s);
+
+
+/*
+ * definitions required for config tables
+ */
+
+enum {
+    Nol = 0, Dir = 1,
+    Chr = 2, Blk = 3,
+    Reg = 4, Fif = 5,
+    Lnk = 6, Soc = 7,
+};
+
+enum {
+    False = 0,
+    Read  = 1,
+    Write = 2,
+    Exec  = 3,
+};
+
+enum {
+    Archive   = 000,  Audio     = 001,
+    Config    = 002,  Data      = 003,
+    Document  = 004,  Font      = 005,
+    Headers   = 006,  Object    = 007,
+    Patch     = 010,  Picture   = 011,
+    RichText  = 012,  Signature = 013,
+    Software  = 014,  Source    = 015,
+    Video     = 016,  Other     = 017,
+};
+
+struct color_match {
+    char s[14];
+    char c;
+};
+
+
 #include "config.h"
 
-extern struct lsflags flags;
 
 
+
+struct lsflags {
+    unsigned int   columns       : 2; /* 1 on, 2 auto */
+    unsigned int   all           : 1; /* 1 -a, 2 -A */
+    unsigned int   dot_dot       : 1;
+    unsigned int   long_list     : 1;
+    unsigned int   no_sort       : 1;
+    unsigned int   reverse_sort  : 1;
+    unsigned int   color         : 1;
+    unsigned int   num_ids       : 1;
+    unsigned int   show_owner    : 1;
+    unsigned int   show_group    : 1;
+    unsigned int   show_time     : 1;
+    unsigned int   sort_argv     : 1;
+};
 
 
 struct file {
@@ -36,6 +97,7 @@ struct padding {
 
 
 
+struct lsflags flags = { 0 };
 char name_buf[0x400];
 const size_t ext_sz   = sizeof(ext)   / sizeof(struct color_match);
 const size_t fname_sz = sizeof(fname) / sizeof(struct color_match);
@@ -44,21 +106,23 @@ int ignore_links = 0;
 
 
 
-static void short_ls (char **, size_t, size_t, char *);
-static void long_ls  (char **, size_t, size_t, char *);
-
-static void  print_line(struct file *, struct padding *);
-static void  print_path(const char *, const char *);
-static void  print_link(const char *);
-static int   print_name(mode_t, const char *);
-static int   match(const char *, const char *);
 static int   filter(const struct dirent *);
 static int   greater(int, int);
 static int   ilen(int );
-static void  print_time(time_t);
+static int   match(const char *, const char *);
+// ---
+static int   show_dir (char *);
+static void  long_ls  (char **, size_t, size_t, char *);
 static void  print_id(long long id, char ** (*)());
-static void  print_type(mode_t);
+static void  print_line(struct file *, struct padding *);
+static void  print_link(const char *);
+static void  print_name(mode_t, const char *);
+static void  print_path(const char *, const char *);
 static void  print_perms(mode_t);
+static void  print_time(time_t);
+static void  print_type(mode_t);
+static void  short_ls (char **, size_t, size_t, char *);
+static void  show_file (char *);
 
 
 
@@ -66,21 +130,24 @@ static void  print_perms(mode_t);
 static int
 no_sort(
     const struct dirent **a,
-    const struct dirent **b) {
+    const struct dirent **b)
+{
 	return 0;
 }
 
 static int
 my_alphasort(
     const struct dirent **a,
-    const struct dirent **b) {
+    const struct dirent **b)
+{
 	return strcmp((*a)->d_name, (*b)->d_name);
 }
 
 static int
 sort_reverse(
     const struct dirent **a,
-    const struct dirent **b) {
+    const struct dirent **b)
+{
 	return -strcmp((*a)->d_name, (*b)->d_name);
 }
 
@@ -90,12 +157,14 @@ typeof (&alphasort)  sort_func = my_alphasort;
 
 
 static int
-filter(const struct dirent *ent) {
+filter(const struct dirent *ent)
+{
 	return flags.all || ent->d_name[0] != '.';
 }
 
 static int
-filter_dot(const struct dirent *ent) {
+filter_dot(const struct dirent *ent)
+{
 	return filter(ent)
 	    && strcmp(ent->d_name, ".")
 	    && strcmp(ent->d_name, "..");
@@ -159,8 +228,7 @@ show_dir(char *path)
 		    sz, path
 		);
 	};
-	while (sz--)
-		free(ent[sz]);
+	while (sz--) free(ent[sz]);
 	free(ent);
 	return 1;
 }
@@ -177,7 +245,7 @@ show_file(char *path)
 	f.mode = s.st_mode;
 	if (S_ISDIR(f.mode)) {
 		putchar('\n');
-		if (flags.color) print_path(path, DIR_);
+		if (flags.color) print_path(path, type_color[Dir]);
 		else print(path);
 		puts(" :");
 		if (!show_dir(path) && flags.color)
@@ -305,20 +373,18 @@ print_id(long long id, char ** (*tostr)())
 static void
 print_type(mode_t mode)
 {
-#ifdef TYPE_PRINT
 	if (flags.color)
 	    switch (mode & S_IFMT) {
-		case S_IFDIR:  print(TYPE_DIR);  break;
-		case S_IFCHR:  print(TYPE_CHR);  break;
-		case S_IFBLK:  print(TYPE_BLK);  break;
-		case S_IFREG:  print(TYPE_REG);  break;
-		case S_IFIFO:  print(TYPE_FIFO); break;
-		case S_IFLNK:  print(TYPE_LINK); break;
-		case S_IFSOCK: print(TYPE_SOCK); break;
-		default:       print(TYPE_NONE); break;
+		case S_IFDIR:  print(type_char[Dir]);  break;
+		case S_IFCHR:  print(type_char[Chr]);  break;
+		case S_IFBLK:  print(type_char[Blk]);  break;
+		case S_IFREG:  print(type_char[Reg]);  break;
+		case S_IFIFO:  print(type_char[Fif]); break;
+		case S_IFLNK:  print(type_char[Lnk]); break;
+		case S_IFSOCK: print(type_char[Soc]); break;
+		default:       print(type_char[Nol]); break;
 	}
 	else
-#endif
 	    switch (mode & S_IFMT) {
 		case S_IFDIR:  putchar('d'); break;
 		case S_IFCHR:  putchar('c'); break;
@@ -356,10 +422,10 @@ print_perms(mode_t m)
 		print(mode);
 	} else {
 		for (i = 0; mode[i]; i++) {
-			perm_color(mode[i], i);
+			print(perm_char[mode[i] == '-'? False : 1 + i%3]);
 			putchar(mode[i]);
 		};
-		print(NORMAL);
+		print("\e[0m");
 	};
 	putchar(' ');
 }
@@ -397,8 +463,22 @@ short_ls(char **str, size_t off, size_t sz, char *path)
 			if (flags.color) {
 				if (lstat(cat_dir(path, *str+off), &s) < 0)
 					exit(3);
-				i = print_name(s.st_mode, *str+off);
-				for (; i < max; i++)  putchar(' ');
+				print_name(s.st_mode, *str+off);
+				i = strlen(*str+off);
+				switch (s.st_mode & S_IFMT) {
+				case S_IFCHR:  i += strlen(marker[Chr]); break;
+				case S_IFBLK:  i += strlen(marker[Blk]); break;
+				case S_IFIFO:  i += strlen(marker[Fif]); break;
+				case S_IFSOCK: i += strlen(marker[Soc]); break;
+				case S_IFDIR:  i += strlen(marker[Dir]); break;
+				case S_IFLNK:  i += strlen(marker[Lnk])
+				                  + 4 - i%4; break;
+				case S_IFREG:
+				default:
+					if (s.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH))
+						i += strlen(marker[Reg]);
+				};
+				for (; i < max; i++) putc(' ', stdout);
 			} else {
 				printf("%-*s", max, *str+off);
 			};
@@ -424,63 +504,44 @@ single_column:
 }
 
 
-int
+void
 print_name(mode_t mode, const char *name)
 {
 	int i;
 	const char *p;
-	if (name == NULL) return 0;
+	if (name == NULL) return;
 	switch (mode & S_IFMT) {
-	case S_IFCHR:
-		return (
-		    printf(CHR "%s" NORMAL MRK_CHR, name)
-		    - strlen(CHR NORMAL)
-		);
-	case S_IFBLK:
-		return (
-		    printf(BLK "%s" NORMAL MRK_BLK, name)
-		    - strlen(BLK NORMAL)
-		);
-	case S_IFIFO:
-	case S_IFSOCK:
-		return (
-		    printf(FIFO "%s" NORMAL MRK_FIFO, name)
-		    - strlen(FIFO NORMAL)
-		);
-	case S_IFDIR:
-		return (
-		    printf(DIR_ "%s" NORMAL MRK_DIR_, name)
-		    - strlen(DIR_ NORMAL)
-		);
+	case S_IFCHR:  printf("%s%s\e[0m%s", type_color[Chr], name, marker[Chr]); break;
+	case S_IFBLK:  printf("%s%s\e[0m%s", type_color[Blk], name, marker[Blk]); break;
+	case S_IFIFO:  printf("%s%s\e[0m%s", type_color[Fif], name, marker[Fif]); break;
+	case S_IFSOCK: printf("%s%s\e[0m%s", type_color[Soc], name, marker[Soc]); break;
+	case S_IFDIR:  printf("%s%s\e[0m%s", type_color[Dir], name, marker[Dir]); break;
 	case S_IFLNK:
-		i = printf(LINK "%s" NORMAL MRK_LINK "%.*s",
-		        name, (int) (4 - strlen(name)%4), "    ");
+		printf("%s%s\e[0m%s%.*s",
+		        type_color[Lnk], name, marker[Lnk],
+		        (int) (4 - strlen(name)%4), "    ");
 		print_link(name);
-		return (i - strlen(LINK NORMAL));
+		return;
 	case S_IFREG: /* fallthrow */
 		if (mode & (S_IXUSR|S_IXGRP|S_IXOTH)) {
-			return (
-			    printf(EXEC "%s" NORMAL MRK_EXEC, name)
-			    - strlen(EXEC NORMAL)
-			);
+			printf("%s%s\e[0m%s", type_color[Reg], name, marker[Reg]);
+			return;
 		};
 	default:
 		p = strrchr(name, '.');
-		if (p != NULL) {
-			for (++p, i = 0; i < ext_sz; i++) {
-				if (!match(ext[i].r, p)) continue;
-				printf("%s%s" NORMAL, ext[i].c, name);
-				return strlen(name);
-			};
+		if (p == NULL) goto no_extension;
+		for (++p, i = 0; i < ext_sz; i++) {
+			if (!match(ext[i].s, p)) continue;
+			printf("%s%s\e[0m", color_codes[ext[i].c], name);
+			return;
 		};
+no_extension:
 		for (i = 0; i < fname_sz; i++) {
-			if (!match(fname[i].r, name)) continue;
-			printf("%s%s" NORMAL, fname[i].c, name);
-			return strlen(name);
+			if (!match(fname[i].s, name)) continue;
+			printf("%s%s\e[0m", color_codes[fname[i].c], name);
+			return;
 		};
-		i = printf("%s", name);
-		fputs(NORMAL, stdout);
-		return i;
+		printf("%s%s\e[0m", color_codes[Other], name);
 	};
 }
 
@@ -497,7 +558,7 @@ print_link(const char *lname)
 			return ;
 		};
 		name[sz] = '\0';
-		print_path(name, LINK);
+		print_path(name, type_color[Lnk]);
 	};
 
 }
@@ -509,9 +570,9 @@ print_path(const char *str, const char *color)
 	fputs(color, stdout);
 	for (;*str;str++) {
 		if (*str != '/') putchar(*str);
-		else printf(NORMAL "/%s", color);
+		else printf("\e[0m/%s", color);
 	};
-	fputs(NORMAL, stdout);
+	fputs("\e[0m", stdout);
 	return ;
 }
 
@@ -537,3 +598,73 @@ match(const char *r, const char *s)
 	};
 	return !*s;
 };
+
+
+static void parse_flags(char *);
+static void parse_argv(unsigned, char **);
+
+
+
+
+static int
+sort_argv(const void *a, const void *b) {
+	return flags.reverse_sort ?
+		-strcmp(a, b) :
+		 strcmp(a, b);
+}
+
+
+static void
+parse_argv(unsigned argc, char **argv)
+{
+	for (; argc; argc--, argv++)
+		if (**argv == '-') parse_flags(*argv + 1);
+}
+
+
+static void
+parse_flags(char *astr)
+{
+	while (*astr)  switch (*astr++)
+	{
+		case '1': flags.columns      = 0; break;
+		case 'C': flags.columns      = 1; break;
+		case 'A': flags.dot_dot      = 1; // -->
+		case 'a': flags.all          = 1; break;
+		case 'f': flags.no_sort      = 1; break;
+		case 'g': flags.show_group   = 1; break;
+		case 'G': flags.color        = 1; break;
+		case 'l': flags.long_list    = 1; break;
+		case 'n': flags.num_ids      = 1; break;
+		case 'o': flags.show_owner   = 1; break;
+		case 'r': flags.reverse_sort = 1; break;
+		case 't': flags.show_time    = 1; break;
+		case 'V': flags.sort_argv    = 1; break;
+		case '-':
+			/* long options, if any */
+		default:
+			printf("tls: illegal option:  %c\n", astr[-1]);
+			puts("usage: tls [-1CAaGlgonfrV] files");
+			exit(1);
+	};
+}
+
+
+int
+main(int argc, char *argv[])
+{
+	int i, noarg = 1;
+	flags.columns = isatty(1);
+	parse_argv(argc -1, argv +1);
+	if (flags.sort_argv)
+		qsort(argv +1, argc -1, sizeof(char *), &sort_argv);
+	if (argc >= 2) {
+		for (i = 1; i < argc; i++) {
+			if (*argv[i] == '-') continue;
+			show_file(argv[i]);
+			noarg = 0;
+		};
+	};
+	if (noarg) show_dir(".");
+	return 0;
+}

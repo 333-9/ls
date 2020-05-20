@@ -1,10 +1,13 @@
-# CC = clang
+CC = clang
 # CC = tcc
 
-tls: main.c show.o *.h
-	$(CC) -o $@ main.c show.o
+#tls: main.c show.o *.h
+#	$(CC) -o $@ main.c show.o
 
-show.o: *.h
+#show.o: *.h
+
+tls: new.c config.h
+	$(CC) -o $@ $<
 
 
 .PHONY: clean install
@@ -12,7 +15,7 @@ show.o: *.h
 clean:
 	rm -f *.o
 
-install: bls
+install: tls
 	mkdir -p  /usr/local/bin/
 	cp -f tls /usr/local/bin/
 	chmod 755 /usr/local/bin/tls
