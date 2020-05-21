@@ -1,0 +1,56 @@
+--- dc.h
++++ config.h
+@@ -42,6 +42,15 @@
+     [False] = "\e[38;5;235m",
+ };
+ 
++/* names to be joined into a single entry in long listing */
++const char *long_truncate[][2] = {
++    { "tty*",   "tty\e[0m.." },
++    { "vcs*",   "vcs\e[0m.." },
++    { "ram*",   "ram\e[0m.." },
++    { "loop?",  "loop\e[0m?" },
++    { NULL, NULL},
++};
++
+ 
+ /* file extension match colors */
+ char *color_codes[020] =
+--- dm.c
++++ main.c
+@@ -278,15 +278,23 @@
+ void
+ long_ls(char **name, size_t off,  size_t sz, char *path)
+ {
+-	size_t i;
++	size_t i, j, name_i;
+ 	struct stat s;
+ 	struct file *f;
+ 	struct padding  pad = { 1, 1, 1, 1 };
+ 	f = malloc(sizeof(struct file) * sz);
+ 	if (f == NULL) exit(1);
+-	for (i = 0; i < sz; i++) {
+-		f[i].name = name[i] + off;
+-		if (lstat(cat_dir(path, name[i] + off), &s) < 0) return ;
++	for (i = name_i = 0; name_i < sz; i++, name_i++) {
++		f[i].name = name[name_i] + off;
++		for (j = 0; long_truncate[j][0]; j++) {
++			if (!match(long_truncate[j][0], name[name_i]+off)) continue;
++			if (i > 0 && f[i-1].name == long_truncate[j][1])
++				i -= 1;
++			else
++				f[i].name = (char *) long_truncate[j][1];
++			break;
++		};
++		if (lstat(cat_dir(path, name[name_i] + off), &s) < 0) return ;
+ 		f[i].tim    = s.st_mtim.tv_sec; // s.st_atim.tv_sec
+ 		f[i].user   = s.st_uid;
+ 		f[i].group  = s.st_gid;
+@@ -301,6 +309,7 @@
+ 		};
+ 		pad.blocks = greater(ilen(f[i].blocks),  pad.blocks);
+ 	};
++	sz = i;
+ 	pad.size++;
+ 	for (i = 0; i < sz; i++) {
+ 		print_line(f + i, &pad);

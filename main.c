@@ -286,7 +286,7 @@ long_ls(char **name, size_t off,  size_t sz, char *path)
 	if (f == NULL) exit(1);
 	for (i = 0; i < sz; i++) {
 		f[i].name = name[i] + off;
-		if (lstat(cat_dir(path, f[i].name), &s) < 0) return ;
+		if (lstat(cat_dir(path, name[i] + off), &s) < 0) return ;
 		f[i].tim    = s.st_mtim.tv_sec; // s.st_atim.tv_sec
 		f[i].user   = s.st_uid;
 		f[i].group  = s.st_gid;

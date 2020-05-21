@@ -18,7 +18,7 @@ const char marker[][8] = {
     [Reg] = " *", // executable
     [Fif] = " |",
     [Lnk] = " ->",
-    [Soc] = " ->",
+    [Soc] = " |",
     [Nol] = "",
 };
 
