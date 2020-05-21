@@ -511,23 +511,25 @@ print_name(mode_t mode, const char *name)
 	const char *p;
 	if (name == NULL) return;
 	switch (mode & S_IFMT) {
-	case S_IFCHR:  printf("%s%s\e[0m%s", type_color[Chr], name, marker[Chr]); break;
-	case S_IFBLK:  printf("%s%s\e[0m%s", type_color[Blk], name, marker[Blk]); break;
-	case S_IFIFO:  printf("%s%s\e[0m%s", type_color[Fif], name, marker[Fif]); break;
-	case S_IFSOCK: printf("%s%s\e[0m%s", type_color[Soc], name, marker[Soc]); break;
-	case S_IFDIR:  printf("%s%s\e[0m%s", type_color[Dir], name, marker[Dir]); break;
+	case S_IFCHR:  i = Chr; break;
+	case S_IFBLK:  i = Blk; break;
+	case S_IFIFO:  i = Fif; break;
+	case S_IFSOCK: i = Soc; break;
+	case S_IFDIR:  i = Dir; break;
 	case S_IFLNK:
-		printf("%s%s\e[0m%s%.*s",
-		        type_color[Lnk], name, marker[Lnk],
-		        (int) (4 - strlen(name)%4), "    ");
+		print(type_color[Lnk]);
+		print(name);
+		print("\e[0m");
+		print(marker[Lnk]);
+		printf("%.*s", (int) (4 - strlen(name)%4), "    ");
 		print_link(name);
 		return;
-	case S_IFREG: /* fallthrow */
+	case S_IFREG:
+	default:
 		if (mode & (S_IXUSR|S_IXGRP|S_IXOTH)) {
 			printf("%s%s\e[0m%s", type_color[Reg], name, marker[Reg]);
 			return;
 		};
-	default:
 		p = strrchr(name, '.');
 		if (p == NULL) goto no_extension;
 		for (++p, i = 0; i < ext_sz; i++) {
@@ -541,8 +543,15 @@ no_extension:
 			printf("%s%s\e[0m", color_codes[fname[i].c], name);
 			return;
 		};
-		printf("%s%s\e[0m", color_codes[Other], name);
+		print(color_codes[Other]);
+		print(name);
+		print("\e[0m");
+		return;
 	};
+	print(type_color[i]);
+	print(name);
+	print("\e[0m");
+	print(marker[i]);
 }
 
 
