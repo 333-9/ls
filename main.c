@@ -62,8 +62,8 @@ struct color_match {
 
 struct lsflags {
     unsigned int   columns       : 2; /* 1 on, 2 auto */
-    unsigned int   all           : 1; /* 1 -a, 2 -A */
-    unsigned int   dot_dot       : 1;
+    unsigned int   all           : 1;
+    unsigned int   dot_dot       : 1; // no . ..
     unsigned int   long_list     : 1;
     unsigned int   no_sort       : 1;
     unsigned int   reverse_sort  : 1;
