@@ -65,7 +65,8 @@ char *color_codes[020] =
 };
 
 
-/* ! Warning: pattern string can't exceed 13 characters long
+/*
+ * Warning: pattern string can't exceed 13 characters !!!
  *
  * pattern matching:
  *     ? - any character
@@ -74,13 +75,10 @@ char *color_codes[020] =
  *         - '^' does not have a special meaning
  */
 
-/*
- * ext   - matches an extension after the last '.'
- */
+/* matches the last file extension  */
 const struct color_match  ext[] =
 {
     { "[cfr]",      Source },
-    { "f90",        Source },
     { "go",         Source },
     { "asm",        Source },
     { "py",         Source },
@@ -88,8 +86,7 @@ const struct color_match  ext[] =
     { "vim",        Source },
     { "pl",         Source },
     { "swift",      Source },
-    { "cpp",        Source },
-    { "c++",        Source },
+    { "c[p+][p+]",  Source },
     { "sql",        Source },
     { "js",         Source },
     { "perl",       Source },
@@ -113,7 +110,7 @@ const struct color_match  ext[] =
     { "md",         Document },
     { "tex",        Document },
     { "wiki",       Document },
-    { "[12345]",    Document },
+    { "[1234567]",  Document },
     { "man",        Document },
     { "info",       Document },
     { "o",          Object },
@@ -188,7 +185,7 @@ const struct color_match  ext[] =
 };
 
 
-/* fname - matches full name */
+/* matches full name */
 const struct color_match  fname[] =
 {
     { "*rc",      Config },
