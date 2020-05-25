@@ -1,6 +1,6 @@
 tls - tiny implementation of ls.
 
-[example](example_output.png)
+![example](example_output.png)
 
 ## options
    - -1  one file per line
