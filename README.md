@@ -1,16 +1,16 @@
-tls - tiny ls
+tls - tiny implementation of ls.
 
 [example](example_output.png)
 
 ## options
    - -1  one file per line
-   - -C  print columns
    - -a  show all files
    - -A  filter `.` and `..`
+   - -C  print columns
    - -G  show color, indicators, and links
+   - -V  sort files given as arguments
    - -f  no sort
    - -r  reverse sort
-   - -V  sort files given as arguments
    - -l  long listing
    - -o  * show owner
    - -g  * show group
