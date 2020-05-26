@@ -108,7 +108,7 @@ int ignore_links = 0;
 
 static int   filter(const struct dirent *);
 static int   greater(int, int);
-static int   ilen(int );
+static int   ilen(unsigned long);
 static int   match(const char *, const char *);
 // ---
 static int   show_dir (char *);
@@ -329,7 +329,7 @@ print_line(struct file *f, struct padding *pad)
 
 
 static inline int
-ilen(int a) {
+ilen(unsigned long a) {
 	int i;
 	for (i = 0; a; i++)
 		a >>= 3; //a /= 10;
