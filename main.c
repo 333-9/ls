@@ -634,8 +634,8 @@ parse_argv(unsigned argc, char **argv)
 static void
 parse_flags(char *astr)
 {
-	while (*astr)  switch (*astr++)
-	{
+	while (*astr) {
+		switch (*astr++) {
 		case '1': flags.columns      = 0; break;
 		case 'C': flags.columns      = 1; break;
 		case 'A': flags.dot_dot      = 1; // -->
@@ -651,10 +651,13 @@ parse_flags(char *astr)
 		case 'V': flags.sort_argv    = 1; break;
 		case '-':
 			/* long options, if any */
+			// break;
 		default:
 			printf("tls: illegal option:  %c\n", astr[-1]);
+		case 'h':
 			puts("usage: tls [-1CAaGlgonfrV] files");
 			exit(1);
+		};
 	};
 }
 
