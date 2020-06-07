@@ -63,7 +63,7 @@ struct color_match {
 struct lsflags {
     unsigned int   columns       : 2; /* 1 on, 2 auto */
     unsigned int   all           : 1;
-    unsigned int   dot_dot       : 1; // no . ..
+    unsigned int   dot_dot       : 1; // no . & ..
     unsigned int   long_list     : 1;
     unsigned int   no_sort       : 1;
     unsigned int   reverse_sort  : 1;
@@ -73,6 +73,7 @@ struct lsflags {
     unsigned int   show_group    : 1;
     unsigned int   show_time     : 1;
     unsigned int   sort_argv     : 1;
+    unsigned int   _print_paths  : 1;
 };
 
 
@@ -243,6 +244,8 @@ show_file(char *path)
 	// ---
 	if (lstat(path, &s) < 0) return ;
 	f.mode = s.st_mode;
+	flags._print_paths = 1;
+	// unset _print_paths when done printing
 	if (S_ISDIR(f.mode)) {
 		putchar('\n');
 		if (flags.color) print_path(path, type_color[Dir]);
@@ -270,6 +273,7 @@ show_file(char *path)
 		};
 		putchar('\n');
 	};
+	flags._print_paths = 0;
 }
 
 
@@ -517,9 +521,13 @@ print_name(mode_t mode, const char *name)
 	case S_IFSOCK: i = Soc; break;
 	case S_IFDIR:  i = Dir; break;
 	case S_IFLNK:
-		print(type_color[Lnk]);
-		print(name);
-		print("\e[0m");
+		if (flags._print_paths)
+			print_path(name, type_color[Lnk]);
+		else {
+			print(type_color[Lnk]);
+			print(name);
+			print("\e[0m");
+		}
 		print(marker[Lnk]);
 		printf("%.*s", (int) (4 - strlen(name)%4), "    ");
 		print_link(name);
@@ -527,30 +535,47 @@ print_name(mode_t mode, const char *name)
 	case S_IFREG:
 	default:
 		if (mode & (S_IXUSR|S_IXGRP|S_IXOTH)) {
-			printf("%s%s\e[0m%s", type_color[Reg], name, marker[Reg]);
+			if (flags._print_paths)
+				print_path(name, type_color[Reg]);
+			else
+				printf("%s%s\e[0m%s", type_color[Reg], name, marker[Reg]);
 			return;
 		};
 		p = strrchr(name, '.');
 		if (p == NULL) goto no_extension;
 		for (++p, i = 0; i < ext_sz; i++) {
 			if (!match(ext[i].s, p)) continue;
-			printf("%s%s\e[0m", color_codes[ext[i].c], name);
+			if (flags._print_paths)
+				print_path(name, color_codes[ext[i].c]);
+			else
+				printf("%s%s\e[0m", color_codes[ext[i].c], name);
 			return;
 		};
 no_extension:
 		for (i = 0; i < fname_sz; i++) {
 			if (!match(fname[i].s, name)) continue;
-			printf("%s%s\e[0m", color_codes[fname[i].c], name);
+			if (flags._print_paths)
+				print_path(name, color_codes[fname[i].c]);
+			else
+				printf("%s%s\e[0m", color_codes[fname[i].c], name);
 			return;
 		};
-		print(color_codes[Other]);
-		print(name);
-		print("\e[0m");
+		if (flags._print_paths)
+			print_path(name, color_codes[Other]);
+		else {
+			print(color_codes[Other]);
+			print(name);
+			print("\e[0m");
+		};
 		return;
 	};
-	print(type_color[i]);
-	print(name);
-	print("\e[0m");
+	if (flags._print_paths)
+		print_path(name, type_color[i]);
+	else {
+		print(type_color[i]);
+		print(name);
+		print("\e[0m");
+	};
 	print(marker[i]);
 }
 
