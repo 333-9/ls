@@ -113,7 +113,7 @@ static int   ilen(unsigned long);
 static int   match(const char *, const char *);
 // ---
 static int   show_dir (char *);
-static void  long_ls  (char **, size_t, size_t, char *);
+static void  long_ls  (char **, size_t, char *);
 static void  print_id(long long id, char ** (*)());
 static void  print_line(struct file *, struct padding *);
 static void  print_link(const char *);
@@ -122,7 +122,7 @@ static void  print_path(const char *, const char *);
 static void  print_perms(mode_t);
 static void  print_time(time_t);
 static void  print_type(mode_t);
-static void  short_ls (char **, size_t, size_t, char *);
+static void  short_ls (char **, size_t, char *);
 static void  show_file (char *);
 
 
@@ -187,7 +187,7 @@ static void print(const char *s) {
 };
 
 
-char *
+static char *
 cat_dir(const char *a, const char *b)
 {
 	if (snprintf(name_buf, sizeof(name_buf), "%s/%s", a, b)
@@ -203,7 +203,7 @@ cat_dir(const char *a, const char *b)
 int
 show_dir(char *path)
 {
-	size_t sz;
+	int i, sz;
 	struct dirent **ent;
 	// ---
 	if (flags.dot_dot)
@@ -216,18 +216,13 @@ show_dir(char *path)
 	//
 	sz = scandir(path, &ent, filter_func, sort_func);
 	if (sz == 0) return 0;
+	for (i = 0; i < sz; i++) {
+		memmove(ent[i], ent[i]->d_name, strlen(ent[i]->d_name) +1);
+	};
 	if (flags.long_list) {
-		long_ls(
-		    (char **) ent,
-		    offsetof(struct dirent, d_name),
-		    sz, path
-		);
+		long_ls((char **) ent, sz, path);
 	} else {
-		short_ls(
-		    (char **) ent,
-		    offsetof(struct dirent, d_name),
-		    sz, path
-		);
+		short_ls((char **) ent, sz, path);
 	};
 	while (sz--) free(ent[sz]);
 	free(ent);
@@ -280,7 +275,7 @@ show_file(char *path)
 
 
 void
-long_ls(char **name, size_t off,  size_t sz, char *path)
+long_ls(char **name, size_t sz, char *path)
 {
 	size_t i;
 	struct stat s;
@@ -289,8 +284,8 @@ long_ls(char **name, size_t off,  size_t sz, char *path)
 	f = malloc(sizeof(struct file) * sz);
 	if (f == NULL) exit(1);
 	for (i = 0; i < sz; i++) {
-		f[i].name = name[i] + off;
-		if (lstat(cat_dir(path, name[i] + off), &s) < 0) return ;
+		f[i].name = name[i];
+		if (lstat(cat_dir(path, name[i]), &s) < 0) return ;
 		f[i].tim    = s.st_mtim.tv_sec; // s.st_atim.tv_sec
 		f[i].user   = s.st_uid;
 		f[i].group  = s.st_gid;
@@ -447,7 +442,7 @@ get_tw()
 
 
 void
-short_ls(char **str, size_t off, size_t sz, char *path)
+short_ls(char **str, size_t sz, char *path)
 {
 	int cols, c, i;
 	int max, tmp;
@@ -456,7 +451,7 @@ short_ls(char **str, size_t off, size_t sz, char *path)
 	if (flags.columns) {
 		if ((cols = get_tw()) < 0) cols = 80;
 		for (max = 3, c = 0; c < sz; ++c) {
-			tmp = strlen(str[c]+off);
+			tmp = strlen(str[c]);
 			if (tmp > max) max = tmp;
 		};
 		if (((max +5) * 2) > cols) goto single_column;
@@ -465,10 +460,10 @@ short_ls(char **str, size_t off, size_t sz, char *path)
 		ignore_links = 1;
 		for (c = 0; sz--; str++) {
 			if (flags.color) {
-				if (lstat(cat_dir(path, *str+off), &s) < 0)
+				if (lstat(cat_dir(path, *str), &s) < 0)
 					exit(3);
-				print_name(s.st_mode, *str+off);
-				i = strlen(*str+off);
+				print_name(s.st_mode, *str);
+				i = strlen(*str);
 				switch (s.st_mode & S_IFMT) {
 				case S_IFCHR:  i += strlen(marker[Chr]); break;
 				case S_IFBLK:  i += strlen(marker[Blk]); break;
@@ -484,7 +479,7 @@ short_ls(char **str, size_t off, size_t sz, char *path)
 				};
 				for (; i < max; i++) putc(' ', stdout);
 			} else {
-				printf("%-*s", max, *str+off);
+				printf("%-*s", max, *str);
 			};
 			if (++c == cols)
 				c = 0, putchar('\n');
@@ -496,11 +491,11 @@ short_ls(char **str, size_t off, size_t sz, char *path)
 single_column:
 		for (; sz--; str++) {
 			if (flags.color) {
-				if (lstat(cat_dir(path, *str+off), &s) < 0)
+				if (lstat(cat_dir(path, *str), &s) < 0)
 					exit(3);
-				print_name(s.st_mode, *str+off);
+				print_name(s.st_mode, *str);
 			} else {
-				print(*str+off);
+				print(*str);
 			};
 			putchar('\n');
 		};
