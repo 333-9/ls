@@ -1,0 +1,116 @@
+diff --git a/main.c b/main.c
+index cf6ba69..9b212d5 100644
+--- a/main.c
++++ b/main.c
+@@ -7,6 +7,7 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include <alloca.h>
+ #include <time.h>
+ #include <unistd.h>
+ 
+@@ -74,6 +75,7 @@ struct lsflags {
+     unsigned int   show_time     : 1;
+     unsigned int   sort_argv     : 1;
+     unsigned int   _print_paths  : 1;
++    unsigned int   dirs_first    : 1;
+ };
+ 
+ 
+@@ -103,6 +105,7 @@ char name_buf[0x400];
+ const size_t ext_sz   = sizeof(ext)   / sizeof(struct color_match);
+ const size_t fname_sz = sizeof(fname) / sizeof(struct color_match);
+ int ignore_links = 0;
++const char *g_path = "";
+ 
+ 
+ 
+@@ -111,7 +114,11 @@ static int   filter(const struct dirent *);
+ static int   greater(int, int);
+ static int   ilen(unsigned long);
+ static int   match(const char *, const char *);
++static char *cat_dir(const char *, const char *);
+ // ---
++static void  fileswap(struct file *, struct file *);
++static void  dirfirst_sort_l(struct file *, unsigned);
++static void  dirfirst_sort_s(char **, unsigned);
+ static int   show_dir (char *);
+ static void  long_ls  (char **, size_t, char *);
+ static void  print_id(long long id, char ** (*)());
+@@ -128,6 +135,46 @@ static void  show_file (char *);
+ 
+ 
+ 
++static void
++rotate(void *base, unsigned sz, unsigned n)
++{
++	void *p;
++	if ((n < 2) | !sz) return ;
++	p = alloca(sz);
++	n = (n - 1) * sz;
++	memcpy(p, base + n, sz);
++	memmove(base + sz, base, n);
++	memcpy(base, p, sz);
++}
++
++static void
++dirfirst_sort_l(struct file *arr, unsigned sz)
++{
++	size_t i, j, dir = 0;
++	for (i = 0; i < sz; i++) {
++		if (S_ISDIR(arr[i].mode)) {
++			rotate(arr +dir, sizeof(struct file), i - dir +1);
++			dir += 1;
++		};
++	};
++}
++
++static void
++dirfirst_sort_s(char **arr, unsigned sz)
++{
++	struct stat s = { 0 };
++	unsigned i, dir = 0;
++	//
++	for (i = 0; i < sz; i++) {
++		stat(cat_dir(g_path, arr[i]), &s); // errors ignored here
++		if (S_ISDIR(s.st_mode)) {
++			rotate(arr +dir, sizeof(char *), i - dir +1);
++			dir += 1;
++		};
++	};
++}
++
++
+ static int
+ no_sort(
+     const struct dirent **a,
+@@ -301,6 +348,9 @@ long_ls(char **name, size_t sz, char *path)
+ 		pad.blocks = greater(ilen(f[i].blocks),  pad.blocks);
+ 	};
+ 	pad.size++;
++	if (flags.dirs_first) {
++		dirfirst_sort_l(f, sz);
++	};
+ 	for (i = 0; i < sz; i++) {
+ 		print_line(f + i, &pad);
+ 	};
+@@ -448,6 +498,10 @@ short_ls(char **str, size_t sz, char *path)
+ 	int max, tmp;
+ 	struct stat s = { 0 };
+ 	// ---
++	if (flags.dirs_first) {
++		g_path = path;
++		dirfirst_sort_s(str, sz);
++	};
+ 	if (flags.columns) {
+ 		if ((cols = get_tw()) < 0) cols = 80;
+ 		for (max = 3, c = 0; c < sz; ++c) {
+@@ -669,6 +723,7 @@ parse_flags(char *astr)
+ 		case 'r': flags.reverse_sort = 1; break;
+ 		case 't': flags.show_time    = 1; break;
+ 		case 'V': flags.sort_argv    = 1; break;
++		case 'D': flags.dirs_first   = 1; break;
+ 		case '-':
+ 			/* long options, if any */
+ 			// break;
