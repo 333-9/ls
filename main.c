@@ -314,15 +314,17 @@ print_line(struct file *f, struct padding *pad)
 	print_type(f->mode);
 	print_perms(f->mode);
 	printf("%*u ", (int) pad->blocks, (unsigned) f->blocks);
+	//
 	if (S_ISCHR(f->mode) || S_ISBLK(f->mode))
 		printf(" %*u, %*u ", 3, major(f->size), 3, minor(f->size));
 	else
 		printf("%*u ", (int) pad->size, (unsigned) f->size);
-	if (flags.show_owner) print_id(f->user,  (char **(*)()) &getpwuid);
-	if (flags.show_group) print_id(f->group, (char **(*)()) &getgrgid);
-	if (flags.show_time) print_time(f->tim);
-	if (flags.color) print_name(f->mode, f->name);
-	else print(f->name);
+	//
+	if (flags.show_owner)  print_id(f->user,  (char **(*)()) &getpwuid);
+	if (flags.show_group)  print_id(f->group, (char **(*)()) &getgrgid);
+	if (flags.show_time)   print_time(f->tim);
+	if (flags.color)       print_name(f->mode, f->name);
+	else                   print(f->name);
 	putchar('\n');
 }
 
@@ -378,21 +380,21 @@ print_type(mode_t mode)
 		case S_IFCHR:  print(type_char[Chr]);  break;
 		case S_IFBLK:  print(type_char[Blk]);  break;
 		case S_IFREG:  print(type_char[Reg]);  break;
-		case S_IFIFO:  print(type_char[Fif]); break;
-		case S_IFLNK:  print(type_char[Lnk]); break;
-		case S_IFSOCK: print(type_char[Soc]); break;
-		default:       print(type_char[Nol]); break;
+		case S_IFIFO:  print(type_char[Fif]);  break;
+		case S_IFLNK:  print(type_char[Lnk]);  break;
+		case S_IFSOCK: print(type_char[Soc]);  break;
+		default:       print(type_char[Nol]);  break;
 	}
 	else
 	    switch (mode & S_IFMT) {
-		case S_IFDIR:  putchar('d'); break;
-		case S_IFCHR:  putchar('c'); break;
-		case S_IFBLK:  putchar('b'); break;
-		case S_IFREG:  putchar('-'); break;
-		case S_IFIFO:  putchar('p'); break;
-		case S_IFLNK:  putchar('l'); break;
-		case S_IFSOCK: putchar('s'); break;
-		default:       putchar('?'); break;
+		case S_IFDIR:  putchar('d');  break;
+		case S_IFCHR:  putchar('c');  break;
+		case S_IFBLK:  putchar('b');  break;
+		case S_IFREG:  putchar('-');  break;
+		case S_IFIFO:  putchar('p');  break;
+		case S_IFLNK:  putchar('l');  break;
+		case S_IFSOCK: putchar('s');  break;
+		default:       putchar('?');  break;
 	};
 }
 
@@ -471,7 +473,7 @@ short_ls(char **str, size_t sz, char *path)
 				case S_IFSOCK: i += strlen(marker[Soc]); break;
 				case S_IFDIR:  i += strlen(marker[Dir]); break;
 				case S_IFLNK:  i += strlen(marker[Lnk])
-				                  + 4 - i%4; break;
+				                    + 4 - i%4;  break;
 				case S_IFREG:
 				default:
 					if (s.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH))
@@ -481,10 +483,12 @@ short_ls(char **str, size_t sz, char *path)
 			} else {
 				printf("%-*s", max, *str);
 			};
-			if (++c == cols)
-				c = 0, putchar('\n');
-			else
+			if (++c == cols) {
+				c = 0;
+				putchar('\n');
+			} else {
 				putchar(' ');
+			};
 		};
 		if (c) putchar('\n');
 	} else {
@@ -507,14 +511,15 @@ void
 print_name(mode_t mode, const char *name)
 {
 	int i;
+	char *color = "", *mark = "";
 	const char *p;
 	if (name == NULL) return;
 	switch (mode & S_IFMT) {
-	case S_IFCHR:  i = Chr; break;
-	case S_IFBLK:  i = Blk; break;
-	case S_IFIFO:  i = Fif; break;
-	case S_IFSOCK: i = Soc; break;
-	case S_IFDIR:  i = Dir; break;
+	case S_IFCHR:  color = type_color[Chr]; mark = marker[Chr]; break;
+	case S_IFBLK:  color = type_color[Blk]; mark = marker[Blk]; break;
+	case S_IFIFO:  color = type_color[Fif]; mark = marker[Fif]; break;
+	case S_IFSOCK: color = type_color[Soc]; mark = marker[Soc]; break;
+	case S_IFDIR:  color = type_color[Dir]; mark = marker[Dir]; break;
 	case S_IFLNK:
 		if (flags._print_paths)
 			print_path(name, type_color[Lnk]);
@@ -530,48 +535,34 @@ print_name(mode_t mode, const char *name)
 	case S_IFREG:
 	default:
 		if (mode & (S_IXUSR|S_IXGRP|S_IXOTH)) {
-			if (flags._print_paths)
-				print_path(name, type_color[Reg]);
-			else
-				printf("%s%s\e[0m%s", type_color[Reg], name, marker[Reg]);
-			return;
+			color = type_color[Reg];
+			mark  = marker[Reg];
+			goto print;
 		};
 		p = strrchr(name, '.');
-		if (p == NULL) goto no_extension;
-		for (++p, i = 0; i < ext_sz; i++) {
-			if (!match(ext[i].s, p)) continue;
-			if (flags._print_paths)
-				print_path(name, color_codes[ext[i].c]);
-			else
-				printf("%s%s\e[0m", color_codes[ext[i].c], name);
-			return;
+		if (p != NULL) {
+			p += 1;
+			for (i = 0; i < ext_sz; i++) {
+				if (match(ext[i].s, p)) {
+					color = color_codes[exg[i].c];
+					goto print;
+				};
+			};
 		};
-no_extension:
 		for (i = 0; i < fname_sz; i++) {
-			if (!match(fname[i].s, name)) continue;
-			if (flags._print_paths)
-				print_path(name, color_codes[fname[i].c]);
-			else
-				printf("%s%s\e[0m", color_codes[fname[i].c], name);
-			return;
+			if (!match(fname[i].s, name)) {
+				color = color_codes[fname[i].c];
+				goto print;
+			};
 		};
-		if (flags._print_paths)
-			print_path(name, color_codes[Other]);
-		else {
-			print(color_codes[Other]);
-			print(name);
-			print("\e[0m");
-		};
-		return;
+		color = color_codes[Other];
 	};
+print:
 	if (flags._print_paths)
-		print_path(name, type_color[i]);
-	else {
-		print(type_color[i]);
-		print(name);
-		print("\e[0m");
-	};
-	print(marker[i]);
+		print_path(name, color);
+	else
+		printf("%s%s\e[0m%s", color, name, mark);
+	return;
 }
 
 
