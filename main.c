@@ -215,7 +215,7 @@ show_dir(char *path)
 		sort_func = sort_reverse;
 	//
 	sz = scandir(path, &ent, filter_func, sort_func);
-	if (sz == 0) return 0;
+	if (sz <= 0) return 0;
 	for (i = 0; i < sz; i++) {
 		memmove(ent[i], ent[i]->d_name, strlen(ent[i]->d_name) +1);
 	};
@@ -511,7 +511,7 @@ void
 print_name(mode_t mode, const char *name)
 {
 	int i;
-	char *color = "", *mark = "";
+	const char *color = "", *mark = "";
 	const char *p;
 	if (name == NULL) return;
 	switch (mode & S_IFMT) {
@@ -544,7 +544,7 @@ print_name(mode_t mode, const char *name)
 			p += 1;
 			for (i = 0; i < ext_sz; i++) {
 				if (match(ext[i].s, p)) {
-					color = color_codes[exg[i].c];
+					color = color_codes[ext[i].c];
 					goto print;
 				};
 			};
