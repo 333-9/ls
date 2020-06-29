@@ -82,7 +82,7 @@ struct {
 	//
 } flags = {0};
 
-unsigned maxdepth = 0x400;
+unsigned maxdepth = 0x200;
 unsigned depth = 0;
 const char *indent = "  ";
 
@@ -107,6 +107,7 @@ struct padding {
 
 
 char name_buf[0x400];
+char leaf_flags[0x200] = {0};
 const size_t ext_sz   = sizeof(ext)   / sizeof(struct color_match);
 const size_t fname_sz = sizeof(fname) / sizeof(struct color_match);
 
@@ -191,6 +192,10 @@ show_dir(char *path)
 
 //-------------------------------------------------------------------
 
+static void print_unicode(struct stat *s, const char *name, int last);
+static void print_ascii(struct stat *s, const char *name, int last);
+static void print_indent(struct stat *s, const char *name, int last);
+
 
 void
 list(char **name, size_t sz, char *path)
@@ -202,29 +207,75 @@ list(char **name, size_t sz, char *path)
 		dname = cat_dir(path, name[i]);
 		if (lstat(cat_dir(path, name[i]), &s) < 0)
 			return ;
-		if (flags.size)   printf("%8lu ", (long) s.st_size);
-		if (flags.owner)  print_id(s.st_uid,  (char **(*)()) &getpwuid);
-		if (flags.group)  print_id(s.st_gid, (char **(*)()) &getgrgid);
-		if (flags.time)   print_time(s.st_mtim.tv_sec);
-		for (j = 0; j <= depth; j++)
-			print(indent);
-		if (flags.color)  print_name(s.st_mode, name[i]);
-		else              print(name[i]);
+		print_unicode(&s, name[i], i == sz-1);
 		putchar('\n');
-		if (S_ISDIR(s.st_mode)) {
+		if (S_ISDIR(s.st_mode) && depth < maxdepth) {
 			dname = strdup(dname);
+			if (i == sz -1)
+				leaf_flags[depth] = 1;
 			depth += 1;
 			show_dir(dname);
 			depth -= 1;
+			leaf_flags[depth] = 0;
 		};
 	};
 }
 
 
 static void
-print_indent()
+print_ascii(struct stat *s, const char *name, int last)
 {
-	// something
+	int i;
+	if (flags.size)   printf("%8lu ", (long) s->st_size);
+	if (flags.owner)  print_id(s->st_uid,  (char **(*)()) &getpwuid);
+	if (flags.group)  print_id(s->st_gid, (char **(*)()) &getgrgid);
+	if (flags.time)   print_time(s->st_mtim.tv_sec);
+	for (i = 0; i < depth; i++) {
+		if (leaf_flags[i]) print("   ");
+		else print("|  ");
+		//print(indent);
+	};
+	if (last) print("`- ");
+	else      print("|- ");
+	if (flags.color) print_name(s->st_mode, name);
+	else             print(name);
+}
+
+
+static void
+print_unicode(struct stat *s, const char *name, int last)
+{
+	int i;
+	if (flags.size)   printf("%8lu ", (long) s->st_size);
+	if (flags.owner)  print_id(s->st_uid,  (char **(*)()) &getpwuid);
+	if (flags.group)  print_id(s->st_gid, (char **(*)()) &getgrgid);
+	if (flags.time)   print_time(s->st_mtim.tv_sec);
+	for (i = 0; i < depth; i++) {
+		if (leaf_flags[i]) print("  ");
+		else print("│ ");
+		//print("└├│.");
+		//print(indent);
+	};
+	if (last) print("└╴");
+	else      print("├╴");
+	if (flags.color) print_name(s->st_mode, name);
+	else             print(name);
+}
+
+
+static void
+print_indent(struct stat *s, const char *name, int last)
+{
+	int i;
+	if (flags.size)   printf("%8lu ", (long) s->st_size);
+	if (flags.owner)  print_id(s->st_uid,  (char **(*)()) &getpwuid);
+	if (flags.group)  print_id(s->st_gid, (char **(*)()) &getgrgid);
+	if (flags.time)   print_time(s->st_mtim.tv_sec);
+	for (i = 0; i <= depth; i++) {
+		print(indent);
+	};
+	if (flags.color) print_name(s->st_mode, name);
+	else             print(name);
 }
 
 
@@ -345,13 +396,12 @@ static void
 parse_argv(unsigned n, const char **arg)
 {
 	for (; n; n--, arg++) {
+		printf("%s", *arg);
 		if (!strcmp(*arg, "-n")) {
-			arg++;
-			n--;
+			if (arg++ == NULL) break;
+			if (n-- <= 0) break;
 			maxdepth = strtol(*arg, NULL, 0);
-			if (maxdepth <= 0)
-				maxdepth = 0x400;
-			continue;
+			if (maxdepth <= 0) maxdepth = 0x400;
 		} else if (**arg == '-') {
 			parse_flags(*arg + 1);
 		};
@@ -396,6 +446,9 @@ main(int argc, char *argv[])
 {
 	int i, noarg = 1;
 	parse_argv(argc -1, argv +1);
+	//
+	show_dir(".");
+	return 0;
 	if (argc >= 2) {
 		for (i = 1; i < argc; i++) {
 			if (*argv[i] == '-') continue;
