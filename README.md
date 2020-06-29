@@ -16,3 +16,22 @@ tls - tiny implementation of ls.
    - -g  * show group
    - -n  * show numerical IDs
    - -t  * show time of last modification
+
+---
+
+tree - list files recursively
+
+## options
+   - -a  show hidden files
+   - -d  list only directories
+   - -n  max depth
+   - -p  print full path of files
+   - -s  print file size
+   - -o  print owner
+   - -g  print group
+   - -t  print time
+   - -G  show color
+   - -A  show ascii graphics
+   - -U  show unicode graphics
+   - -Y  use yaml format
+   - -J  use json format

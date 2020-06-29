@@ -1,9 +1,12 @@
-CC = clang
-# CC = tcc
+#CC = clang
+CC = tcc
 
 
 tls: main.c config.h
 	$(CC) -o $@ main.c
+
+tree: tree.c config.h
+	$(CC) -o $@ tree.c
 
 
 .PHONY: clean install
