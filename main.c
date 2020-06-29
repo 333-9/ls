@@ -79,7 +79,7 @@ struct lsflags {
 
 struct file {
 	char  * name;
-	time_t  tim;
+	time_t  time;
 	off_t   size;
 	size_t  blocks;
 	mode_t  mode;
@@ -251,7 +251,7 @@ show_file(char *path)
 		putchar('\n');
 	} else if (flags.long_list) {
 		f.name   = path;
-		f.tim    = s.st_mtim.tv_sec; /*s.st_atim.tv_sec*/
+		f.time   = s.st_mtim.tv_sec; /*s.st_atim.tv_sec*/
 		f.user   = s.st_uid;
 		f.group  = s.st_gid;
 		f.blocks = s.st_blocks;
@@ -286,7 +286,7 @@ long_ls(char **name, size_t sz, char *path)
 	for (i = 0; i < sz; i++) {
 		f[i].name = name[i];
 		if (lstat(cat_dir(path, name[i]), &s) < 0) return ;
-		f[i].tim    = s.st_mtim.tv_sec; // s.st_atim.tv_sec
+		f[i].time   = s.st_mtim.tv_sec; // s.st_atim.tv_sec
 		f[i].user   = s.st_uid;
 		f[i].group  = s.st_gid;
 		f[i].blocks = s.st_blocks;
@@ -322,7 +322,7 @@ print_line(struct file *f, struct padding *pad)
 	//
 	if (flags.show_owner)  print_id(f->user,  (char **(*)()) &getpwuid);
 	if (flags.show_group)  print_id(f->group, (char **(*)()) &getgrgid);
-	if (flags.show_time)   print_time(f->tim);
+	if (flags.show_time)   print_time(f->time);
 	if (flags.color)       print_name(f->mode, f->name);
 	else                   print(f->name);
 	putchar('\n');
