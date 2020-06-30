@@ -119,14 +119,17 @@ static int   filter(const struct dirent *);
 static int   greater(int, int);
 static int   ilen(unsigned long);
 static int   match(const char *, const char *);
-// ---
-static int   show_dir (char *);
-static void  list(char **, size_t, char *);
+
+static int   show_dir (const char *);
+static void  list(char **, size_t, const char *);
 static void  print_id(long long id, char ** (*)());
 static void  print_name(mode_t, const char *);
 static void  print_path(const char *, const char *);
 static void  print_time(time_t);
 static void  show_file (char *);
+
+static void parse_flags(const char *);
+static int  parse_argv(unsigned, const char **);
 
 
 
@@ -172,7 +175,7 @@ cat_dir(const char *a, const char *b)
 
 
 int
-show_dir(char *path)
+show_dir(const char *path)
 {
 	int i, sz;
 	struct dirent **ent;
@@ -195,10 +198,11 @@ show_dir(char *path)
 static void print_unicode(struct stat *s, const char *name, int last);
 static void print_ascii(struct stat *s, const char *name, int last);
 static void print_indent(struct stat *s, const char *name, int last);
+static void print_root(const char *name);
 
 
 void
-list(char **name, size_t sz, char *path)
+list(char **name, size_t sz, const char *path)
 {
 	size_t i, j;
 	struct stat s;
@@ -271,11 +275,33 @@ print_indent(struct stat *s, const char *name, int last)
 	if (flags.owner)  print_id(s->st_uid,  (char **(*)()) &getpwuid);
 	if (flags.group)  print_id(s->st_gid, (char **(*)()) &getgrgid);
 	if (flags.time)   print_time(s->st_mtim.tv_sec);
-	for (i = 0; i <= depth; i++) {
+	for (i = 0; i < depth; i++) {
 		print(indent);
 	};
 	if (flags.color) print_name(s->st_mode, name);
 	else             print(name);
+}
+
+static void
+print_root(const char *name)
+{
+	struct stat s;
+	if (lstat(name, &s) < 0) {
+		fprintf(stderr, "ls: %s does not exist\n", name);
+		exit(1);
+	} else if (!S_ISDIR(s.st_mode)) {
+		fprintf(stderr, "ls: %s not a directory\n", name);
+		exit(1);
+	};
+	if (flags.size)   printf("%8lu ", (long) s.st_size);
+	if (flags.owner)  print_id(s.st_uid, (char **(*)()) &getpwuid);
+	if (flags.group)  print_id(s.st_gid, (char **(*)()) &getgrgid);
+	if (flags.time)   print_time(s.st_mtim.tv_sec);
+	if (flags.color)  print_name(s.st_mode, name);
+	else              print(name);
+	putchar('\n');
+	depth = 0;
+	show_dir(name);
 }
 
 
@@ -386,26 +412,27 @@ match(const char *r, const char *s)
 };
 
 
-static void parse_flags(const char *);
-static void parse_argv(unsigned, const char **);
 
 
-
-
-static void
+static int
 parse_argv(unsigned n, const char **arg)
 {
+	int flag;
+	//
 	for (; n; n--, arg++) {
-		printf("%s", *arg);
 		if (!strcmp(*arg, "-n")) {
 			if (arg++ == NULL) break;
 			if (n-- <= 0) break;
 			maxdepth = strtol(*arg, NULL, 0);
-			if (maxdepth <= 0) maxdepth = 0x400;
+			if (maxdepth < 0) maxdepth = 0x400;
 		} else if (**arg == '-') {
 			parse_flags(*arg + 1);
+		} else {
+			print_root(*arg);
+			flag = 1;
 		};
 	};
+	return flag;
 }
 
 
@@ -445,17 +472,7 @@ int
 main(int argc, char *argv[])
 {
 	int i, noarg = 1;
-	parse_argv(argc -1, argv +1);
-	//
-	show_dir(".");
-	return 0;
-	if (argc >= 2) {
-		for (i = 1; i < argc; i++) {
-			if (*argv[i] == '-') continue;
-			// show file
-			noarg = 0;
-		};
-	};
-	if (noarg) show_dir(".");
+	if (!parse_argv(argc -1, argv +1))
+		print_root(".");
 	return 0;
 }
