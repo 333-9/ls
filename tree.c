@@ -428,6 +428,7 @@ parse_argv(unsigned n, const char **arg)
 		} else if (**arg == '-') {
 			parse_flags(*arg + 1);
 		} else {
+			if (flag) putchar('\n');
 			print_root(*arg);
 			flag = 1;
 		};
