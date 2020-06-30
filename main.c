@@ -1,6 +1,6 @@
-/*
- *
- */
+/*-------------------*
+ |  ls - list files  |
+ *-------------------*/
 
 #include <dirent.h>
 #include <stddef.h>
