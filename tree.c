@@ -70,15 +70,20 @@ enum {
 };
 
 struct {
-	unsigned int   format     : 4;
-	unsigned int   all        : 1;
-	unsigned int   dirs_only  : 1;
-	unsigned int   full_path  : 1;
-	unsigned int   size       : 1;
-	unsigned int   owner      : 1;
-	unsigned int   group      : 1;
-	unsigned int   time       : 1;
-	unsigned int   color      : 1;
+	unsigned  format     : 4;
+	unsigned  all        : 1;
+	unsigned  dirs_only  : 1;
+	unsigned  full_path  : 1;
+	unsigned  color      : 1;
+	union {
+		char info;
+		struct {
+			char  size   : 1;
+			char  owner  : 1;
+			char  group  : 1;
+			char  time   : 1;
+		};
+	};
 	//
 } flags = {0};
 
@@ -195,9 +200,9 @@ show_dir(const char *path)
 
 //-------------------------------------------------------------------
 
-static void print_unicode(struct stat *s, const char *name, int last);
-static void print_ascii(struct stat *s, const char *name, int last);
-static void print_indent(struct stat *s, const char *name, int last);
+static void print_unicode (struct stat *s, const char *name, int last);
+static void print_ascii   (struct stat *s, const char *name, int last);
+static void print_indent  (struct stat *s, const char *name, int last);
 static void print_root(const char *name);
 
 
@@ -207,6 +212,7 @@ list(char **name, size_t sz, const char *path)
 	size_t i, j;
 	struct stat s;
 	char *dname;
+	//
 	for (i = 0; i < sz; i++) {
 		dname = cat_dir(path, name[i]);
 		if (lstat(cat_dir(path, name[i]), &s) < 0)
@@ -230,10 +236,6 @@ static void
 print_ascii(struct stat *s, const char *name, int last)
 {
 	int i;
-	if (flags.size)   printf("%8lu ", (long) s->st_size);
-	if (flags.owner)  print_id(s->st_uid,  (char **(*)()) &getpwuid);
-	if (flags.group)  print_id(s->st_gid, (char **(*)()) &getgrgid);
-	if (flags.time)   print_time(s->st_mtim.tv_sec);
 	for (i = 0; i < depth; i++) {
 		if (leaf_flags[i]) print("   ");
 		else print("|  ");
@@ -243,6 +245,15 @@ print_ascii(struct stat *s, const char *name, int last)
 	else      print("|- ");
 	if (flags.color) print_name(s->st_mode, name);
 	else             print(name);
+	if (!flags.info)
+		return ;
+	for (i = strlen(name) + depth * 2;
+	     i < 24; i++)  putchar(' '); // change 24 to 40 if lines break too much
+	putchar('\t');
+	if (flags.size)   printf("%8lu ", (long) s->st_size);
+	if (flags.owner)  print_id(s->st_uid,  (char **(*)()) &getpwuid);
+	if (flags.group)  print_id(s->st_gid, (char **(*)()) &getgrgid);
+	if (flags.time)   print_time(s->st_mtim.tv_sec);
 }
 
 
@@ -250,20 +261,22 @@ static void
 print_unicode(struct stat *s, const char *name, int last)
 {
 	int i;
+	for (i = 0; i < depth; i++) {
+		if (leaf_flags[i]) print("  ");
+		else print("│ ");
+	};
+	print(last ? "└╴" : "├╴");
+	if (flags.color)  print_name(s->st_mode, name);
+	else  print(name);
+	if (!flags.info)
+		return ;
+	for (i = strlen(name) + depth * 2;
+	     i < 24; i++)  putchar(' '); // change 24 to 40 if lines break too much
+	putchar('\t');
 	if (flags.size)   printf("%8lu ", (long) s->st_size);
 	if (flags.owner)  print_id(s->st_uid,  (char **(*)()) &getpwuid);
 	if (flags.group)  print_id(s->st_gid, (char **(*)()) &getgrgid);
 	if (flags.time)   print_time(s->st_mtim.tv_sec);
-	for (i = 0; i < depth; i++) {
-		if (leaf_flags[i]) print("  ");
-		else print("│ ");
-		//print("└├│.");
-		//print(indent);
-	};
-	if (last) print("└╴");
-	else      print("├╴");
-	if (flags.color) print_name(s->st_mode, name);
-	else             print(name);
 }
 
 
