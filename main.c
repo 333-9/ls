@@ -193,7 +193,7 @@ cat_dir(const char *a, const char *b)
 	if (snprintf(name_buf, sizeof(name_buf), "%s/%s", a, b)
 	    > sizeof(name_buf))
 	{
-		fputs("file path too long\n", stderr);
+		fputs("ls: file path too long\n", stderr);
 		exit(2);
 	};
 	return name_buf;
@@ -664,9 +664,9 @@ parse_flags(char *astr)
 			/* long options, if any */
 			// break;
 		default:
-			printf("tls: illegal option:  %c\n", astr[-1]);
+			printf("ls: illegal option:  %c\n", astr[-1]);
 		case 'h':
-			puts("usage: tls [-1CAaGlgonfrV] files");
+			puts("usage: ls [-1CAaGlgonfrV] files");
 			exit(1);
 		};
 	};

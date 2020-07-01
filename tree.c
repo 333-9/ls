@@ -167,7 +167,7 @@ cat_dir(const char *a, const char *b)
 	if (snprintf(name_buf, sizeof(name_buf), "%s/%s", a, b)
 	    > sizeof(name_buf))
 	{
-		fputs("file path too long\n", stderr);
+		fputs("tree: file path too long\n", stderr);
 		exit(2);
 	};
 	return name_buf;
@@ -287,10 +287,10 @@ print_root(const char *name)
 {
 	struct stat s;
 	if (lstat(name, &s) < 0) {
-		fprintf(stderr, "ls: %s does not exist\n", name);
+		fprintf(stderr, "tree: %s does not exist\n", name);
 		exit(1);
 	} else if (!S_ISDIR(s.st_mode)) {
-		fprintf(stderr, "ls: %s not a directory\n", name);
+		fprintf(stderr, "tree: %s not a directory\n", name);
 		exit(1);
 	};
 	if (flags.size)   printf("%8lu ", (long) s.st_size);
@@ -460,9 +460,9 @@ parse_flags(const char *arg)
 		case '-':
 			/* long options, if any */
 		default:
-			printf("tls: illegal option:  %c\n", *arg);
+			printf("tree: illegal option:  %c\n", *arg);
 		case 'h':
-			puts("usage: tls [-1CAaGlgonfrV] files");
+			puts("usage: tree [-adpsogtGAUYJ] [file ...]");
 			exit(1);
 		};
 	};
