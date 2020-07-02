@@ -60,6 +60,23 @@ struct color_match {
 
 
 
+struct file {
+	char  * name;
+	time_t  time;
+	off_t   size;
+	mode_t  mode;
+	uid_t   user;
+	gid_t   group;
+};
+
+
+struct padding {
+	int size;
+	int user;
+	int group;
+};
+
+
 enum {
 	Indent  = 0,
 	Unicode = 1,
@@ -89,26 +106,7 @@ struct {
 unsigned maxdepth = 0x200;
 unsigned depth = 0;
 const char *indent = "  ";
-
-
-struct file {
-	char  * name;
-	time_t  time;
-	off_t   size;
-	mode_t  mode;
-	uid_t   user;
-	gid_t   group;
-};
-
-
-struct padding {
-	int size;
-	int user;
-	int group;
-};
-
-
-
+const char *gpath = "";
 
 char name_buf[0x400];
 char leaf_flags[0x200] = {0};
@@ -456,6 +454,14 @@ my_alphasort(
 static int
 filter(const struct dirent *ent)
 {
+	struct stat s;
+	if (flags.dirs_only) {
+		stat(cat_dir(gpath, ent->d_name), &s);
+		return (S_ISDIR(s.st_mode))
+		    && (flags.all || ent->d_name[0] != '.')
+		    && strcmp(ent->d_name, ".")
+		    && strcmp(ent->d_name, "..");
+	};
 	return (flags.all || ent->d_name[0] != '.')
 	    && strcmp(ent->d_name, ".")
 	    && strcmp(ent->d_name, "..");
@@ -524,6 +530,8 @@ list(const char *path)
 	struct stat s;
 	char *dname;
 	//
+	if (flags.dirs_only)
+		gpath = path;
 	sz = scandir(path, &ent, &filter, &my_alphasort);
 	if (sz <= 0) return ;
 	for (i = 0; i < sz; i++) {
