@@ -1,4 +1,4 @@
-tls - tiny implementation of ls.
+# tls - tiny implementation of ls.
 
 ![example](example_output.png)
 
@@ -19,7 +19,7 @@ tls - tiny implementation of ls.
 
 ---
 
-tree - list files recursively
+# tree - list files recursively
 
 ## options
    - -a  show hidden files
