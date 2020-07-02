@@ -285,7 +285,12 @@ print_name(mode_t mode, const char *name)
 		color = color_codes[Other];
 	};
 print:
-	printf("%s%s\e[0m%s", color, name, mark);
+	if (flags.full_path) {
+		print_path(gpath, color);
+		printf("/%s%s\e[0m%s", color, name, mark);
+	} else {
+		printf("%s%s\e[0m%s", color, name, mark);
+	};
 }
 
 
@@ -547,6 +552,7 @@ list(const char *path)
 			continue;
 		};
 		// else
+		if (flags.full_path) gpath = path;
 		print_entry(&s, name[i], i == sz-1);
 		if (S_ISDIR(s.st_mode) && depth < maxdepth) {
 			if (flags.format >= Yaml)
