@@ -318,7 +318,8 @@ print_ascii(const struct stat *s, const char *name, int last)
 	if (last) print("`- ");
 	else      print("|- ");
 	if (flags.color) print_name(s->st_mode, name);
-	else             print(name);
+	else if (flags.full_path) printf("%s/%s", gpath, name);
+	else print(name);
 	//
 	if (!flags.info) {
 		putchar('\n');
@@ -340,7 +341,8 @@ print_unicode(const struct stat *s, const char *name, int last)
 	};
 	print(last ? "└╴" : "├╴");
 	if (flags.color)  print_name(s->st_mode, name);
-	else  print(name);
+	else if (flags.full_path) printf("%s/%s", gpath, name);
+	else print(name);
 	//
 	if (!flags.info) {
 		putchar('\n');
@@ -360,7 +362,8 @@ print_indent(const struct stat *s, const char *name, int last)
 		print(indent);
 	};
 	if (flags.color) print_name(s->st_mode, name);
-	else             print(name);
+	else if (flags.full_path) printf("%s/%s", gpath, name);
+	else print(name);
 	//
 	if (!flags.info) {
 		putchar('\n');
