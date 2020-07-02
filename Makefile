@@ -1,5 +1,5 @@
-#CC = clang
-CC = tcc
+CC = clang
+#CC = tcc
 
 
 tls: main.c config.h

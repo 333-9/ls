@@ -618,7 +618,7 @@ parse_flags(const char *arg)
 }
 
 int
-main(int argc, char *argv[])
+main(int argc, const char *argv[])
 {
 	int i, noarg = 1;
 	if (!parse_argv(argc -1, argv +1)) {
