@@ -368,43 +368,6 @@ print_indent(const struct stat *s, const char *name, int last)
 }
 
 static void
-root(const char *name)
-{
-	struct stat s;
-	if (lstat(name, &s) < 0) {
-		fprintf(stderr, "tree: %s does not exist\n", name);
-		exit(1);
-	} else if (!S_ISDIR(s.st_mode)) {
-		fprintf(stderr, "tree: %s not a directory\n", name);
-		exit(1);
-	};
-	depth = (flags.format == Json) ? 1 : 0;
-	if (flags.format < Yaml) {
-		if (flags.color)  print_name(s.st_mode, name);
-		else              print(name);
-		if (flags.info) {
-			soft_tab(16 + flags.format * 8
-			    - (strlen(name) + depth * 2));
-			putchar('\t');
-			print_info(&s);
-		};
-		putchar('\n');
-	} else if (flags.format == Yaml) {
-		printf("name: \"%s\"\n", name);
-		if (flags.info) print_info_yaml(&s, 0);
-		print("contains:\n");
-	} else if (flags.format == Json) {
-		printf("  {\n    \"name\": \"%s\",\n", name);
-		if (flags.info) print_info_json(&s, 4);
-		soft_tab(4);
-		print("\"contains\": [\n");
-	};
-	list(name);
-	if (flags.format == Json)
-		print("    ]\n  }");
-}
-
-static void
 print_entry(const struct stat *s, const char *name, int last)
 {
 	switch (flags.format) {
@@ -511,6 +474,43 @@ match(const char *r, const char *s)
 	};
 	return !*s;
 };
+
+static void
+root(const char *name)
+{
+	struct stat s;
+	if (lstat(name, &s) < 0) {
+		fprintf(stderr, "tree: %s does not exist\n", name);
+		exit(1);
+	} else if (!S_ISDIR(s.st_mode)) {
+		fprintf(stderr, "tree: %s not a directory\n", name);
+		exit(1);
+	};
+	depth = (flags.format == Json) ? 1 : 0;
+	if (flags.format < Yaml) {
+		if (flags.color)  print_name(s.st_mode, name);
+		else              print(name);
+		if (flags.info) {
+			soft_tab(16 + flags.format * 8
+			    - (strlen(name) + depth * 2));
+			putchar('\t');
+			print_info(&s);
+		};
+		putchar('\n');
+	} else if (flags.format == Yaml) {
+		printf("name: \"%s\"\n", name);
+		if (flags.info) print_info_yaml(&s, 0);
+		print("contains:\n");
+	} else if (flags.format == Json) {
+		printf("  {\n    \"name\": \"%s\",\n", name);
+		if (flags.info) print_info_json(&s, 4);
+		soft_tab(4);
+		print("\"contains\": [\n");
+	};
+	list(name);
+	if (flags.format == Json)
+		print("    ]\n  }");
+}
 
 static void
 recurse(const char *dname, int last)
