@@ -31,6 +31,7 @@ tree - list files recursively
    - -g  print group
    - -t  print time
    - -G  show color
+   - -I  indent recursively
    - -A  show ascii graphics
    - -U  show unicode graphics
    - -Y  use yaml format
