@@ -381,13 +381,21 @@ print_entry(const struct stat *s, const char *name, int last)
 	case Unicode:  print_unicode (s, name, last); break;
 	case Yaml:
 		soft_tab(depth * 4 + 2);
-		printf("- name: \"%s\"%s\n", name, flags.info ? "," : "");
+		printf("- name: \"%s%s%s\"%s\n",
+		    flags.full_path ? gpath : "",
+		    flags.full_path ? "/" : "",
+		    name,
+		    flags.info ? "," : "");
 		print_info_yaml(s, depth * 4 + 4);
 		break;
 	case Json:
 		soft_tab(depth * 4 + 2);  puts("{");
 		soft_tab(depth * 4 + 4);
-		printf("\"name\": \"%s\"%s\n", name, flags.info ? "," : "");
+		printf("\"name\": \"%s%s%s\"%s\n",
+		    flags.full_path ? gpath : "",
+		    flags.full_path ? "/" : "",
+		    name,
+		    flags.info ? "," : "");
 		print_info_json(s, depth * 4 + 4);
 		if (!S_ISDIR(s->st_mode)) {
 			soft_tab(depth * 4 + 2);
