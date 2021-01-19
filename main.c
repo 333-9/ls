@@ -50,7 +50,7 @@ enum {
 };
 
 struct color_match {
-    char s[14];
+    char s[15];
     char c;
 };
 
