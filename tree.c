@@ -504,8 +504,12 @@ root(const char *name)
 	};
 	depth = (flags.format == Json) ? 1 : 0;
 	if (flags.format < Yaml) {
-		if (flags.color)  print_name(s.st_mode, name);
-		else              print(name);
+		if (flags.color) {
+			if (S_ISDIR(s.st_mode))
+				print_path(name, type_color[Dir]);
+			else
+				print_name(s.st_mode, name);
+		} else  print(name);
 		if (flags.info) {
 			soft_tab(16 + flags.format * 8
 			    - (strlen(name) + depth * 2));
