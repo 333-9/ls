@@ -21,6 +21,8 @@
 
 # tree - list files recursively
 
+![example](example_tree.png)
+
 ## options
    - -a  show hidden files
    - -d  list only directories
