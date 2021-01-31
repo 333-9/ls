@@ -1,6 +1,6 @@
 # tls - tiny implementation of ls.
 
-![example](example_ls.png)
+![example](examples/example_ls.png)
 
 ## options
    - -1  one file per line
@@ -21,7 +21,7 @@
 
 # tree - list files recursively
 
-![example](example_tree.png)
+![example](examples/example_tree.png)
 
 ## options
    - -a  show hidden files
