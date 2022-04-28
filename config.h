@@ -37,8 +37,8 @@ const char *type_char[] = {
 /* permission bits colors */
 const char *perm_char[] = {
     [Read]  = "\e[31m",
-    [Write] = "\e[32m",
-    [Exec]  = "\e[32m",
+    [Write] = "\e[34m",
+    [Exec]  = "\e[38;5;46m",
     [False] = "\e[38;5;235m",
 };
 

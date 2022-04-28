@@ -124,48 +124,48 @@ static void  print(const char *);
 static char *cat_dir(const char *, const char *);
 //
 static void  parse_flags(const char *);
-static int   parse_argv(unsigned, const char **);
+static int   parse_argv(const char **);
 static void  root(const char *);
 static void  recurse(const char *, int);
 static void  list(const char *);
 // format:
 static void print_info_yaml (const struct stat *, int);
 static void print_info_json (const struct stat *, int);
+static void print_info_term (const struct stat *, int);
 static void print_ascii     (const struct stat *, const char *, int);
 static void print_unicode   (const struct stat *, const char *, int);
 static void print_indent    (const struct stat *, const char *, int);
 static void print_entry     (const struct stat *, const char *, int );
 static void print_contains  (void);
 // print:
-static void print_info(const struct stat *);
 static void print_time(time_t);
 static void print_id(long, char ** (*)());
-static void print_name(mode_t, const char *);
+static int  print_name(mode_t, const char *);
 static void print_path(const char *, const char *);
 
 
 static void
-print_info_yaml(const struct stat *s, int indent)
+print_info_yaml(const struct stat *s, int ind)
 {
 	if (flags.size)   {
-		soft_tab(indent);
+		soft_tab(4 * ind);
 		printf("size: %lu", (long) s->st_size);
 		putchar('\n');
 	};
 	if (flags.owner)  {
-		soft_tab(indent);
+		soft_tab(4 * ind);
 		print("owner: \"");
 		print_id(s->st_uid,  (char **(*)()) &getpwuid);
 		print("\"\n");
 	};
 	if (flags.group)  {
-		soft_tab(indent);
+		soft_tab(4 * ind);
 		print("group: \"");
 		print_id(s->st_gid,  (char **(*)()) &getgrgid);
 		print("\"\n");
 	};
 	if (flags.time)   {
-		soft_tab(indent);
+		soft_tab(4 * ind);
 		print("modified: \"");
 		print_time(s->st_mtim.tv_sec);
 		print("\"\n");
@@ -173,17 +173,17 @@ print_info_yaml(const struct stat *s, int indent)
 }
 
 static void
-print_info_json(const struct stat *s, int indent)
+print_info_json(const struct stat *s, int ind)
 {
 	int bits = flags.info;
 	if (flags.size)   {
-		soft_tab(indent);
+		soft_tab(4 * ind);
 		printf("\"size\": %lu", (long) s->st_size);
 		if (bits -= flags.size) putchar(',');
 		putchar('\n');
 	};
 	if (flags.owner)  {
-		soft_tab(indent);
+		soft_tab(4 * ind);
 		print("\"owner\": \"");
 		print_id(s->st_uid,  (char **(*)()) &getpwuid);
 		putchar('"');
@@ -191,7 +191,7 @@ print_info_json(const struct stat *s, int indent)
 		putchar('\n');
 	};
 	if (flags.group)  {
-		soft_tab(indent);
+		soft_tab(4 * ind);
 		print("\"group\": \"");
 		print_id(s->st_gid,  (char **(*)()) &getgrgid);
 		putchar('"');
@@ -199,7 +199,7 @@ print_info_json(const struct stat *s, int indent)
 		putchar('\n');
 	};
 	if (flags.time)   {
-		soft_tab(indent);
+		soft_tab(4 * ind);
 		print("\"modified\": \"");
 		print_time(s->st_mtim.tv_sec);
 		putchar('"');
@@ -209,19 +209,33 @@ print_info_json(const struct stat *s, int indent)
 }
 
 static void
-print_info(const struct stat *s)
+print_info_term(const struct stat *s, int ind)
 {
-	if (flags.size)   printf("%8lu ", (long) s->st_size);
-	if (flags.owner)  { print_id(s->st_uid,  (char **(*)()) &getpwuid); putchar(' '); };
-	if (flags.group)  { print_id(s->st_gid,  (char **(*)()) &getgrgid); putchar(' '); };
-	if (flags.time)   { putchar(' '); print_time(s->st_mtim.tv_sec); putchar(' '); };
+	soft_tab(ind > 1 ? ind : 1);
+	if (flags.size) {
+		printf("%8lu ", (long) s->st_size);
+	};
+	if (flags.owner) {
+		print_id(s->st_uid,  (char **(*)()) &getpwuid);
+		putchar(' ');
+	}
+	if (flags.group)  {
+		print_id(s->st_gid,  (char **(*)()) &getgrgid);
+		putchar(' ');
+	};
+	if (flags.time)   {
+		putchar(' ');
+		print_time(s->st_mtim.tv_sec);
+		//putchar(' ');
+	};
+	putchar('\n');
 }
 
 
 static void
 print_time(time_t sec)
 {
-	static time_t now = 0; // time travel not supported
+	static time_t now = 0;
 	struct tm *t;
 	char str[20];
 	// ---
@@ -245,13 +259,13 @@ print_id(long id, char ** (*tostr)())
 }
 
 
-static void
+static int
 print_name(mode_t mode, const char *name)
 {
 	int i;
 	const char *color = "", *mark = "";
 	const char *p;
-	if (name == NULL) return;
+	if (name == NULL) return 0;
 	switch (mode & S_IFMT) {
 	case S_IFCHR:  color = type_color[Chr]; mark = marker[Chr]; break;
 	case S_IFBLK:  color = type_color[Blk]; mark = marker[Blk]; break;
@@ -288,8 +302,10 @@ print:
 	if (flags.full_path) {
 		print_path(gpath, color);
 		printf("/%s%s\e[0m%s", color, name, mark);
+		return strlen(name) + strlen(mark) + 1 + strlen(gpath);
 	} else {
 		printf("%s%s\e[0m%s", color, name, mark);
+		return strlen(name) + strlen(mark);
 	};
 }
 
@@ -309,70 +325,54 @@ print_path(const char *str, const char *color)
 static void
 print_ascii(const struct stat *s, const char *name, int last)
 {
-	int i;
+	int i, l;
 	for (i = 0; i < depth; i++) {
-		if (leaf_flags[i]) print("   ");
-		else print("|  ");
-		//print(indent);
+		print(leaf_flags[i] ? "   " : "|  ");
 	};
-	if (last) print("`- ");
-	else      print("|- ");
-	if (flags.color) print_name(s->st_mode, name);
-	else if (flags.full_path) printf("%s/%s", gpath, name);
-	else print(name);
+	print(last ? "`- " : "|- ");
+	if (flags.color) l = print_name(s->st_mode, name);
+	else if (flags.full_path) l = printf("%s/%s", gpath, name);
+	else l = printf("%s", name);
 	//
 	if (!flags.info) {
 		putchar('\n');
-		return ;
+	} else {
+		print_info_term(s, 40 - (l + depth * 3));
 	};
-	soft_tab(32 - (strlen(name) + depth * 3));
-	putchar('\t');
-	print_info(s);
-	putchar('\n');
 }
 
 static void
 print_unicode(const struct stat *s, const char *name, int last)
 {
-	int i;
+	int i, l;
 	for (i = 0; i < depth; i++) {
-		if (leaf_flags[i]) print("  ");
-		else print("│ ");
+		print(leaf_flags[i] ? "  " : "│ ");
 	};
 	print(last ? "└╴" : "├╴");
-	if (flags.color)  print_name(s->st_mode, name);
-	else if (flags.full_path) printf("%s/%s", gpath, name);
-	else print(name);
+	if (flags.color) l = print_name(s->st_mode, name);
+	else if (flags.full_path) l = printf("%s/%s", gpath, name);
+	else l = printf("%s", name);
 	//
 	if (!flags.info) {
 		putchar('\n');
-		return ;
+	} else {
+		print_info_term(s, 40 - (l + depth * 2));
 	};
-	soft_tab(24 - (strlen(name) + depth * 2));
-	putchar('\t');
-	print_info(s);
-	putchar('\n');
 }
 
 static void
 print_indent(const struct stat *s, const char *name, int last)
 {
-	int i;
-	for (i = 0; i <= depth; i++) {
-		print(indent);
-	};
-	if (flags.color) print_name(s->st_mode, name);
-	else if (flags.full_path) printf("%s/%s", gpath, name);
-	else print(name);
-	//
+	int i, l;
+	soft_tab(4 * (depth +1));
+	if (flags.color) l = print_name(s->st_mode, name);
+	else if (flags.full_path) l = printf("%s/%s", gpath, name);
+	else l = printf("%s", name);
 	if (!flags.info) {
 		putchar('\n');
-		return ;
+	} else {
+		print_info_term(s, 40 - (l + depth * 4));
 	};
-	soft_tab(16 - (strlen(name) + depth * 2));
-	putchar('\t');
-	print_info(s);
-	putchar('\n');
 }
 
 static void
@@ -384,25 +384,28 @@ print_entry(const struct stat *s, const char *name, int last)
 	case Unicode:  print_unicode (s, name, last); break;
 	case Yaml:
 		soft_tab(depth * 4 + 2);
-		printf("- name: \"%s%s%s\"%s\n",
-		    flags.full_path ? gpath : "",
-		    flags.full_path ? "/" : "",
-		    name,
-		    flags.info ? "," : "");
-		print_info_yaml(s, depth * 4 + 4);
+		if (flags.full_path)
+		    printf("- name: \"%s/%s\"%s\n", gpath, name,
+		        flags.info ? "," : "");
+		else
+		    printf("- name: \"%s\"%s\n", name,
+		        flags.info ? "," : "");
+		print_info_yaml(s, depth + 1);
 		break;
 	case Json:
-		soft_tab(depth * 4 + 2);  puts("{");
+		soft_tab(depth * 4 + 2);
+		puts("{");
 		soft_tab(depth * 4 + 4);
-		printf("\"name\": \"%s%s%s\"%s\n",
-		    flags.full_path ? gpath : "",
-		    flags.full_path ? "/" : "",
-		    name,
-		    flags.info ? "," : "");
-		print_info_json(s, depth * 4 + 4);
+		if (flags.full_path)
+		    printf("\"name\": \"%s/%s\"%s\n", gpath, name,
+		        flags.info ? "," : "");
+		else
+		    printf("\"name\": \"%s\"%s\n", name,
+		        flags.info ? "," : "");
+		print_info_json(s, depth + 1);
 		if (!S_ISDIR(s->st_mode)) {
 			soft_tab(depth * 4 + 2);
-			printf("}%s\n", last ? "" : ",");
+			print(last ? "}\n" : "},\n");
 		};
 		break;
 	default:
@@ -413,7 +416,6 @@ print_entry(const struct stat *s, const char *name, int last)
 static void
 print_contains()
 {
-	soft_tab(depth * 4 + 4);
 	if (flags.format == Yaml) {
 		print("contains:\n");
 	} else if (flags.format == Json) {
@@ -511,25 +513,25 @@ root(const char *name)
 				print_name(s.st_mode, name);
 		} else  print(name);
 		if (flags.info) {
-			soft_tab(16 + flags.format * 8
-			    - (strlen(name) + depth * 2));
-			putchar('\t');
-			print_info(&s);
+			print_info_term(&s, 40 - strlen(name)
+			    + (int[]){4,2,3}[flags.format]);
+		} else {
+			putchar('\n');
 		};
-		putchar('\n');
+		list(name);
 	} else if (flags.format == Yaml) {
 		printf("name: \"%s\"\n", name);
 		if (flags.info) print_info_yaml(&s, 0);
-		print("contains:\n");
+		print_contains();
+		list(name);
 	} else if (flags.format == Json) {
 		printf("  {\n    \"name\": \"%s\",\n", name);
-		if (flags.info) print_info_json(&s, 4);
+		if (flags.info) print_info_json(&s, 1);
 		soft_tab(4);
-		print("\"contains\": [\n");
-	};
-	list(name);
-	if (flags.format == Json)
+		print_contains();
+		list(name);
 		print("    ]\n  }");
+	};
 }
 
 static void
@@ -544,7 +546,7 @@ recurse(const char *dname, int last)
 static void
 list(const char *path)
 {
-	int i, j, sz;
+	int i, sz;
 	struct dirent **ent;
 	char **name;
 	struct stat s;
@@ -557,30 +559,28 @@ list(const char *path)
 	for (i = 0; i < sz; i++) {
 		memmove(ent[i], ent[i]->d_name, strlen(ent[i]->d_name) +1);
 	};
-	name = (char **) ent;
-	//
+	name = (void *) ent;
 	for (i = 0; i < sz; i++) {
 		dname = cat_dir(path, name[i]);
-		if (lstat(dname, &s) < 0)
+		if (lstat(dname, &s) < 0) {
 			return ;
-		if (flags.dirs_only && !S_ISDIR(s.st_mode)) {
+		} else if (flags.dirs_only && !S_ISDIR(s.st_mode)) {
 			continue;
 		};
-		// else
 		if (flags.full_path) gpath = path;
 		print_entry(&s, name[i], i == sz-1);
 		if (S_ISDIR(s.st_mode) && depth < maxdepth) {
-			if (flags.format >= Yaml)
+			if (flags.format >= Yaml) {
+				soft_tab(depth * 4 + 4);
 				print_contains();
-			//
+			};
 			dname = strdup(dname);
 			recurse(dname, i == sz-1);
-			//
 			if (flags.format == Json) {
 				soft_tab(depth * 4 + 4);
 				print("]\n");
 				soft_tab(depth * 4 + 2);
-				printf("}%s\n", i == sz-1 ? "" : ",");
+				print(i == sz-1 ? "}\n" : "},\n");
 			};
 		};
 	};
@@ -590,14 +590,13 @@ list(const char *path)
 }
 
 static int
-parse_argv(unsigned n, const char **arg)
+parse_argv(const char **arg)
 {
-	int notfirst;
+	int notfirst = 0;
 	//
-	for (; n; n--, arg++) {
-		if (!strcmp(*arg, "-n")) {
-			if (arg++ == NULL) break;
-			if (n-- <= 0) break;
+	for (; *arg != NULL; arg++) {
+		if (!strcmp(*arg, "-n")) { // parse: ... -n <depth>
+			if (*++arg == NULL) break;
 			maxdepth = strtol(*arg, NULL, 0);
 			if (maxdepth < 0) maxdepth = 0x400;
 		} else if (**arg == '-') {
@@ -649,8 +648,7 @@ parse_flags(const char *arg)
 int
 main(int argc, const char *argv[])
 {
-	int i, noarg = 1;
-	if (!parse_argv(argc -1, argv +1)) {
+	if (!parse_argv(argv +1)) {
 		if (flags.format == Json) print("[\n");
 		root(".");
 	};
